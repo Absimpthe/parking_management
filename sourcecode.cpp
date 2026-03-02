@@ -39,8 +39,16 @@ struct Admin {
     string email;
 };
 
-const int NO_OF_STUDENTS = 100;
-const int NO_OF_ADMINS = 10;
+#define NO_OF_STUDENTS 100
+#define NO_OF_ADMINS 10
+
+Student students[NO_OF_STUDENTS];
+ParkingPass parkingPasses[NO_OF_STUDENTS];
+Admin admins[NO_OF_ADMINS];
+
+int studentCount = 0;
+int passCount = 0;
+int adminCount = 0;
 
 int main()
 {
