@@ -5,16 +5,13 @@ using namespace std;
 
 struct Student {
     string studentID;
+    string password;
     string name;
-    string email;
-    string contactNumber;
     string faculty;
-    string program;
+    string contactNumber;
     string vehicleNumber;
     string vehicleType;
-    string username;
-    string password;
-    string registrationDate;
+    string regDate;
     bool isActive;
 };
 
@@ -34,13 +31,13 @@ struct ParkingPass {
 struct Admin {
     string adminID;
     string name;
-    string username;
     string password;
-    string email;
+    string contactNumber;
 };
 
 #define NO_OF_STUDENTS 100
 #define NO_OF_ADMINS 10
+#define MONTHLY_RATE 30.00
 
 Student students[NO_OF_STUDENTS];
 ParkingPass parkingPasses[NO_OF_STUDENTS];
@@ -53,4 +50,83 @@ int adminCount = 0;
 int main()
 {
 	
+}
+
+/*
+ * loadStudents()
+ * Reads students.txt into the students[] array.
+ * Each line holds pipe-delimited fields:
+ *   studentID|password|name|contact|plate|vehicleType|faculty|email
+ */
+void loadStudents()
+{
+	ifstream file("students.txt");
+	if (!file) return;
+	string line;
+	studentCount = 0;
+	while (getline(file, line) && studentCount < NO_OF_STUDENTS) {
+        stringstream ss(line);
+        Student& s = students[studentCount];
+        getline(ss, s.studentID,      '|');
+        getline(ss, s.password,       '|');
+        getline(ss, s.name,           '|');
+        getline(ss, s.faculty,        '|');
+        getline(ss, s.contactNumber,  '|');
+        getline(ss, s.vehicleNumber,  '|');
+        getline(ss, s.vehicleType,    '|');
+        getline(ss, s.regDate,        '|');
+        studentCount++;
+    }
+}
+
+void loadAdmins()
+{
+	ifstream file("admins.txt");
+	if (!file) return;
+	string line;
+	adminCount = 0;
+	while (getline(file, line) && adminCount < NO_OF_ADMINS) {
+        stringstream ss(line);
+        Admin& a = admins[adminCount];
+        getline(ss, a.adminID,        '|');
+        getline(ss, a.name,           '|');
+        getline(ss, a.password,       '|');
+        getline(ss, a.contactNumber,  '|');
+        adminCount++;
+    }
+}
+
+/*
+ * registerStudent()
+ *
+ * Prompts the user to enter all personal details and creates a new
+ * Student record. Before saving, it checks that the student ID is
+ * not already registered. The new record is appended to students[]
+ * and immediately written to disk via saveStudents().
+ */
+void registerStudent() {
+    cout << "\n===== NEW STUDENT REGISTRATION =====\n";
+
+    Student s;
+    cout << "Enter Student ID : "; cin >> s.studentID;
+
+    // Prevent duplicate registrations
+    if (findStudent(s.studentID) != -1) {
+        cout << "This Student ID is already registered. Please login instead.\n";
+        return;
+    }
+
+    cout << "Enter Password   : "; cin >> s.password;
+    cin.ignore();
+    cout << "Enter Full Name  : "; getline(cin, s.name);
+    cout << "Enter Contact No : "; cin >> s.contactNumber;
+    cout << "Enter Email      : "; cin >> s.email;
+    cout << "Enter Faculty    : "; cin >> s.faculty;
+    cout << "Enter Vehicle Plate : "; cin >> s.vehiclePlate;
+    cout << "Vehicle Type (Car/Motorcycle) : "; cin >> s.vehicleType;
+
+    students[studentCount++] = s;
+    saveStudents();
+
+    cout << "\nRegistration successful! You may now login.\n";
 }
