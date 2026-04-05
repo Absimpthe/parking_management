@@ -47,11 +47,25 @@ int studentCount = 0;
 int passCount = 0;
 int adminCount = 0;
 
-int main()
-{
-	
-}
+void loadStudents();
+void loadAdmins();
+void registerStudent();
+int login(int& index);
 
+int main() 
+{
+    loadStudents();
+    loadAdmins();
+
+    int index = -1;
+    int userType = login(index);
+
+    if (userType == 1) {
+        // Show student menu, pass students[index] around as needed
+    } else if (userType == 2) {
+        // Show admin menu, pass admins[index] around as needed
+    }
+}
 /*
  * loadStudents()
  * Reads students.txt into the students[] array.
@@ -67,14 +81,17 @@ void loadStudents()
 	while (getline(file, line) && studentCount < NO_OF_STUDENTS) {
         stringstream ss(line);
         Student& s = students[studentCount];
-        getline(ss, s.studentID,      '|');
-        getline(ss, s.password,       '|');
-        getline(ss, s.name,           '|');
-        getline(ss, s.faculty,        '|');
-        getline(ss, s.contactNumber,  '|');
-        getline(ss, s.vehicleNumber,  '|');
-        getline(ss, s.vehicleType,    '|');
-        getline(ss, s.regDate,        '|');
+        getline(ss, s.studentID, '|');
+        getline(ss, s.password, '|');
+        getline(ss, s.name, '|');
+        getline(ss, s.faculty, '|');
+        getline(ss, s.contactNumber, '|');
+        getline(ss, s.vehicleNumber, '|');
+        getline(ss, s.vehicleType, '|');
+        getline(ss, s.regDate, '|');
+        string activeStr;  // need this to convert string to bool
+        getline(ss, activeStr, '|');
+        s.isActive = (activeStr == "1");
         studentCount++;
     }
 }
@@ -88,10 +105,10 @@ void loadAdmins()
 	while (getline(file, line) && adminCount < NO_OF_ADMINS) {
         stringstream ss(line);
         Admin& a = admins[adminCount];
-        getline(ss, a.adminID,        '|');
-        getline(ss, a.name,           '|');
-        getline(ss, a.password,       '|');
-        getline(ss, a.contactNumber,  '|');
+        getline(ss, a.adminID, '|');
+        getline(ss, a.name, '|');
+        getline(ss, a.password, '|');
+        getline(ss, a.contactNumber, '|');
         adminCount++;
     }
 }
@@ -117,12 +134,11 @@ void registerStudent() {
     }
 
     cout << "Enter Password   : "; cin >> s.password;
-    cin.ignore();
-    cout << "Enter Full Name  : "; getline(cin, s.name);
-    cout << "Enter Contact No : "; cin >> s.contactNumber;
-    cout << "Enter Email      : "; cin >> s.email;
-    cout << "Enter Faculty    : "; cin >> s.faculty;
-    cout << "Enter Vehicle Plate : "; cin >> s.vehiclePlate;
+    cin.ignore();  // needed for getline()
+    cout << "Enter Full Name  : "; getline(cin, s.name);  // needed to read string that includes spaces
+    cout << "Enter Contact No    : "; cin >> s.contactNumber;
+    cout << "Enter Faculty       : "; cin >> s.faculty;
+    cout << "Enter Vehicle Plate : "; cin >> s.vehicleNumber;
     cout << "Vehicle Type (Car/Motorcycle) : "; cin >> s.vehicleType;
 
     students[studentCount++] = s;
