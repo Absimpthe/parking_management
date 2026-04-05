@@ -130,3 +130,40 @@ void registerStudent() {
 
     cout << "\nRegistration successful! You may now login.\n";
 }
+
+/*
+ * login()
+ *
+ * Accepts an ID and password from the user and checks against both
+ * the students[] and admins[] arrays. Returns 1 if a student match
+ * is found, 2 if an admin match is found, and 0 if login fails.
+ * The matched index is returned via the output parameter 'index'.
+ */
+int login(int& index) {
+    string id, password;
+
+    cout << "\n===== LOGIN =====\n";
+    cout << "Enter ID       : "; cin >> id;
+    cout << "Enter Password : "; cin >> password;
+
+    // Check students array
+    for (int i = 0; i < studentCount; i++) {
+        if (students[i].studentID == id && students[i].password == password) {
+            index = i;
+            cout << "\nLogin successful! Welcome, " << students[i].name << ".\n";
+            return 1; // Student
+        }
+    }
+
+    // Check admins array
+    for (int i = 0; i < adminCount; i++) {
+        if (admins[i].adminID == id && admins[i].password == password) {
+            index = i;
+            cout << "\nLogin successful! Welcome, " << admins[i].name << ".\n";
+            return 2; // Admin
+        }
+    }
+
+    cout << "\nInvalid ID or password. Please try again.\n";
+    return 0;
+}
