@@ -1,6 +1,7 @@
 #include <iostream> 
 #include <fstream>
 #include <string>
+#include <sstream>
 using namespace std;
 
 struct Student {
@@ -52,10 +53,19 @@ void loadAdmins();
 void registerStudent();
 int login(int& index);
 
+void saveParkingPasses();
+void loadParkingPasses();
+void applyParkingPass(Student &s);
+void renewParkingPass(Student &s);
+void viewMyPassHistory(Student &s);
+void viewPendingApplications();
+void approveRejectPass();
+
 int main() 
 {
     loadStudents();
     loadAdmins();
+    loadParkingPasses();
 
     int index = -1;
     int userType = login(index);
@@ -65,6 +75,8 @@ int main()
     } else if (userType == 2) {
         // Show admin menu, pass admins[index] around as needed
     }
+    
+    return 0;
 }
 /*
  * loadStudents()
@@ -182,4 +194,182 @@ int login(int& index) {
 
     cout << "\nInvalid ID or password. Please try again.\n";
     return 0;
+}
+//QY
+void saveParkingPasses() {
+    ofstream file("parking_passes.txt");
+    for (int i = 0; i < passCount; i++) {
+        ParkingPass &p = parkingPasses[i];
+        file << p.passID << "|"
+             << p.studentID << "|"
+             << p.startDate << "|"
+             << p.endDate << "|"
+             << p.status << "|"
+             << p.appliedDate << "|"
+             << p.amount << "|"
+             << p.paymentStatus << "|"
+             << p.paymentDate << "|"
+             << p.renewalCount << endl;
+    }
+    file.close();
+}
+
+void loadParkingPasses() {
+    ifstream file("parking_passes.txt");
+    if (!file) return;
+    
+    string line;
+    passCount = 0;
+    while (getline(file, line) && passCount < NO_OF_STUDENTS) {
+        stringstream ss(line);
+        ParkingPass &p = parkingPasses[passCount];
+        getline(ss, p.passID, '|');
+        getline(ss, p.studentID, '|');
+        getline(ss, p.startDate, '|');
+        getline(ss, p.endDate, '|');
+        getline(ss, p.status, '|');
+        getline(ss, p.appliedDate, '|');
+        ss >> p.amount;
+        ss.ignore();
+        getline(ss, p.paymentStatus, '|');
+        getline(ss, p.paymentDate, '|');
+        ss >> p.renewalCount;
+        passCount++;
+    }
+    file.close();
+}
+//Student applying for monthly pass
+string getCurrentDate() {
+    string date;
+    cout << "Enter date (YYYY-MM-DD): ";
+    cin >> date;
+    return date;
+}
+
+void applyParkingPass(Student &s) {
+    // Check if there are already active monthly passes.
+    for (int i = 0; i < passCount; i++) {
+        if (parkingPasses[i].studentID == s.studentID && 
+            (parkingPasses[i].status == "Active" || parkingPasses[i].status == "Pending")) {
+            cout << "You already have an active or pending application!\n";
+            return;
+        }
+    }
+    
+    ParkingPass newPass;
+    newPass.passID = "P" + to_string(passCount + 1001);
+    newPass.studentID = s.studentID;
+    newPass.startDate = "";
+    newPass.endDate = "";
+    newPass.status = "Pending";
+    newPass.appliedDate = getCurrentDate();
+    newPass.amount = MONTHLY_RATE;
+    newPass.paymentStatus = "Unpaid";
+    newPass.paymentDate = "";
+    newPass.renewalCount = 0;
+    
+    parkingPasses[passCount] = newPass;
+    passCount++;
+    saveParkingPasses();
+    
+    cout << "\nApplication submitted! Pass ID: " << newPass.passID << endl;
+    cout << "Please wait for admin approval.\n";
+}
+
+// Student renew parking pass
+void renewParkingPass(Student &s) {
+    for (int i = 0; i < passCount; i++) {
+        if (parkingPasses[i].studentID == s.studentID && 
+            parkingPasses[i].status == "Active") {
+            
+            cout << "Current pass expires on: " << parkingPasses[i].endDate << endl;
+            cout << "Renew for another month? (y/n): ";
+            char choice;
+            cin >> choice;
+            
+            if (choice == 'y' || choice == 'Y') {
+                // Update new end date 
+                string newEndDate;
+                cout << "Enter new end date (YYYY-MM-DD): ";
+                cin >> newEndDate;
+                parkingPasses[i].endDate = newEndDate;
+                parkingPasses[i].renewalCount++;
+                parkingPasses[i].status = "Pending";  // Needs re-approval
+                saveParkingPasses();
+                cout << "Renewal request submitted for approval.\n";
+            }
+            return;
+        }
+    }
+    cout << "No active parking pass found to renew.\n";
+}
+
+void viewMyPassHistory(Student &s) {
+    bool found = false;
+    cout << "\n=== Your Parking Pass History ===\n";
+    for (int i = 0; i < passCount; i++) {
+        if (parkingPasses[i].studentID == s.studentID) {
+            found = true;
+            ParkingPass &p = parkingPasses[i];
+            cout << "Pass ID: " << p.passID << endl;
+            cout << "Applied: " << p.appliedDate << endl;
+            cout << "Start: " << (p.startDate.empty() ? "N/A" : p.startDate) << endl;
+            cout << "End: " << (p.endDate.empty() ? "N/A" : p.endDate) << endl;
+            cout << "Status: " << p.status << endl;
+            cout << "Amount: RM " << p.amount << endl;
+            cout << "Payment: " << p.paymentStatus << endl;
+            cout << "Renewals: " << p.renewalCount << endl;
+            cout << "------------------------\n";
+        }
+    }
+    if (!found) {
+        cout << "No transaction history found.\n";
+    }
+}
+
+void viewPendingApplications() {
+    bool hasPending = false;
+    cout << "\n=== Pending Applications ===\n";
+    for (int i = 0; i < passCount; i++) {
+        if (parkingPasses[i].status == "Pending") {
+            hasPending = true;
+            cout << "Pass ID: " << parkingPasses[i].passID 
+                 << " | Student ID: " << parkingPasses[i].studentID
+                 << " | Applied: " << parkingPasses[i].appliedDate << endl;
+        }
+    }
+    if (!hasPending) {
+        cout << "No pending applications.\n";
+    }
+}
+
+void approveRejectPass() {
+    string passID;
+    cout << "Enter Pass ID to process: ";
+    cin >> passID;
+    
+    for (int i = 0; i < passCount; i++) {
+        if (parkingPasses[i].passID == passID && 
+            parkingPasses[i].status == "Pending") {
+            
+            cout << "1. Approve\n2. Reject\nChoice: ";
+            int choice;
+            cin >> choice;
+            
+            if (choice == 1) {
+                parkingPasses[i].status = "Active";
+                cout << "Enter start date (YYYY-MM-DD): ";
+                cin >> parkingPasses[i].startDate;
+                cout << "Enter end date (YYYY-MM-DD): ";
+                cin >> parkingPasses[i].endDate;
+                cout << "Pass approved!\n";
+            } else if (choice == 2) {
+                parkingPasses[i].status = "Rejected";
+                cout << "Pass rejected!\n";
+            }
+            saveParkingPasses();
+            return;
+        }
+    }
+    cout << "Pending pass not found.\n";
 }
