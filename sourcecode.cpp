@@ -61,10 +61,57 @@ void viewMyPassHistory(Student &s);
 void viewPendingApplications();
 void approveRejectPass();
 
+//void debugPrintStudents() {
+//    cout << "\n===== DEBUG: LOADED STUDENTS (" << studentCount << ") =====\n";
+//
+//    if (studentCount == 0) {
+//        cout << "No students loaded.\n";
+//        return;
+//    }
+//
+//    for (int i = 0; i < studentCount; i++) {
+//        Student& s = students[i];
+//        cout << "[" << i << "] "
+//             << "ID: "       << s.studentID      << " , "
+//             << "Password: " << s.password       << " , "
+//             << "Name: "     << s.name           << " , "
+//             << "Faculty: "  << s.faculty        << " , "
+//             << "Contact: "  << s.contactNumber  << " , "
+//             << "Plate: "    << s.vehicleNumber  << " , "
+//             << "Vehicle: "  << s.vehicleType    << " , "
+//             << "RegDate: "  << s.regDate        << " , "
+//             << "Active: "   << (s.isActive ? "Yes" : "No") << "\n";
+//    }
+//
+//    cout << "==========================================\n";
+//}
+
+//void debugPrintAdmins() {
+//    cout << "\n===== DEBUG: LOADED ADMINS (" << adminCount << ") =====\n";
+//
+//    if (adminCount == 0) {
+//        cout << "No admins loaded.\n";
+//        return;
+//    }
+//
+//    for (int i = 0; i < adminCount; i++) {
+//        Admin& a = admins[i];
+//        cout << "[" << i << "] "
+//             << "ID: "       << a.adminID        << " , "
+//             << "Name: "     << a.name           << " , "
+//             << "Password: " << a.password       << " , "
+//             << "Contact: "  << a.contactNumber  << "\n";
+//    }
+//
+//    cout << "==========================================\n";
+//}
+
 int main() 
 {
     loadStudents();
+//    debugPrintStudents();
     loadAdmins();
+//    debugPrintAdmins();
     loadParkingPasses();
 
     int index = -1;
@@ -140,10 +187,10 @@ void registerStudent() {
     cout << "Enter Student ID : "; cin >> s.studentID;
 
     // Prevent duplicate registrations
-    if (findStudent(s.studentID) != -1) {
-        cout << "This Student ID is already registered. Please login instead.\n";
-        return;
-    }
+//    if (findStudent(s.studentID) != -1) {
+//        cout << "This Student ID is already registered. Please login instead.\n";
+//        return;
+//    }
 
     cout << "Enter Password   : "; cin >> s.password;
     cin.ignore();  // needed for getline()
@@ -154,7 +201,7 @@ void registerStudent() {
     cout << "Vehicle Type (Car/Motorcycle) : "; cin >> s.vehicleType;
 
     students[studentCount++] = s;
-    saveStudents();
+    //saveStudents();
 
     cout << "\nRegistration successful! You may now login.\n";
 }
@@ -257,7 +304,9 @@ void applyParkingPass(Student &s) {
     }
     
     ParkingPass newPass;
-    newPass.passID = "P" + to_string(passCount + 1001);
+    stringstream ss;
+	ss << "P" << (passCount + 1001);
+	newPass.passID = ss.str();
     newPass.studentID = s.studentID;
     newPass.startDate = "";
     newPass.endDate = "";
