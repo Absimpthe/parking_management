@@ -1,4 +1,5 @@
 #include <iostream> 
+#include <iomanip>
 #include <fstream>
 #include <string>
 #include <sstream>
@@ -106,14 +107,42 @@ void approveRejectPass();
 //    cout << "==========================================\n";
 //}
 
+//void debugPrintParkingPasses() {
+//	cout << fixed << setprecision(2);
+//    cout << "\n===== DEBUG: LOADED PARKING PASSES (" << passCount << ") =====\n";
+//
+//    if (passCount == 0) {
+//        cout << "No parking passes loaded.\n";
+//        return;
+//    }
+//
+//    for (int i = 0; i < passCount; i++) {
+//        ParkingPass& p = parkingPasses[i];
+//        cout << "[" << i << "] "
+//             << "Pass ID: "       << p.passID                              << " , "
+//             << "Student ID: "    << p.studentID                           << " , "
+//             << "Start: "         << (p.startDate.empty() ? "N/A" : p.startDate) << " , "
+//             << "End: "           << (p.endDate.empty() ? "N/A" : p.endDate)     << " , "
+//             << "Status: "        << p.status                              << " , "
+//             << "Applied: "       << p.appliedDate                         << " , "
+//             << "Amount: RM "     << p.amount                              << " , "
+//             << "Payment: "       << p.paymentStatus                       << " , "
+//             << "Payment Date: "  << (p.paymentDate.empty() ? "N/A" : p.paymentDate) << " , "
+//             << "Renewals: "      << p.renewalCount                        << "\n";
+//    }
+//
+//    cout << "==========================================\n";
+//    cout.unsetf(ios::fixed);
+//}
+
 int main() 
 {
     loadStudents();
-//    debugPrintStudents();
+//  debugPrintStudents();
     loadAdmins();
-//    debugPrintAdmins();
+//  debugPrintAdmins();
     loadParkingPasses();
-
+//	debugPrintParkingPasses();
     int index = -1;
     int userType = login(index);
 
