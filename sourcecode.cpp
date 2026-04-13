@@ -3,6 +3,7 @@
 #include <fstream>
 #include <string>
 #include <sstream>
+#include <ctime>
 using namespace std;
 
 struct Student {
@@ -37,7 +38,7 @@ struct Admin {
     string contactNumber;
 };
 
-#define NO_OF_STUDENTS 100
+#define NO_OF_STUDENTS 200
 #define NO_OF_ADMINS 10
 #define MONTHLY_RATE 30.00
 
@@ -56,6 +57,8 @@ int login(int& index);
 
 void saveParkingPasses();
 void loadParkingPasses();
+void viewUpdateProfile(Student &s);
+string getCurrentDate(); 
 void applyParkingPass(Student &s);
 void renewParkingPass(Student &s);
 void viewMyPassHistory(Student &s);
@@ -152,7 +155,20 @@ void registerStudent() {
     cout << "\n===== NEW STUDENT REGISTRATION =====\n";
 
     Student s;
-    cout << "Enter Student ID : "; cin >> s.studentID;
+    
+    // Validate ID
+    while (true) {
+        cout << "Enter Student ID (7 digits, starting with 2): ";
+        cin >> s.studentID;
+        if (s.studentID.length() == 7 && s.studentID[0] == '2') {
+            bool allDigits = true;
+            for (int i = 0; i < 7; i++) {
+                if (!isdigit(s.studentID[i])) { allDigits = false; break; }
+            }
+            if (allDigits) break;
+        }
+        cout << "Invalid Student ID. Please enter again.\n";
+    }
 
     // Prevent duplicate registrations
     if (findStudent(s.studentID) != -1) {
@@ -160,13 +176,118 @@ void registerStudent() {
         return;
     }
 
-    cout << "Enter Password   : "; cin >> s.password;
-    cin.ignore();  // needed for getline()
-    cout << "Enter Full Name  : "; getline(cin, s.name);  // needed to read string that includes spaces
-    cout << "Enter Contact No    : "; cin >> s.contactNumber;
-    cout << "Enter Faculty       : "; cin >> s.faculty;
-    cout << "Enter Vehicle Plate : "; cin >> s.vehicleNumber;
-    cout << "Vehicle Type (Car/Motorcycle) : "; cin >> s.vehicleType;
+    // Validate password
+    while (true) {
+        cout << "Enter Password (at least 6 characters): ";
+        cin >> s.password;
+        if (s.password.length() >= 6) break;
+        cout << "Password too short. Please enter again.\n";
+    }
+    
+    // Validate full name
+	cin.ignore();
+	while (true) {
+	    cout << "Enter Full Name: ";
+	    getline(cin, s.name);
+	    bool validName = s.name.length() >= 2;
+	    for (int i = 0; i < s.name.length(); i++) {
+	        if (!isalpha(s.name[i]) && s.name[i] != ' ') {
+	            validName = false;
+	            break;
+	        }
+	    }
+	    if (validName) break;
+	    cout << "Invalid name. Name must be at least 2 characters and can only contain letters and spaces.\n";
+	}
+	    
+    // Validate contact number
+	while (true) {
+	    cout << "Enter Contact Number (10 digits): ";
+	    cin >> s.contactNumber;
+	    if (s.contactNumber.length() == 10) {
+	        bool allDigits = true;
+	        for (int i = 0; i < s.contactNumber.length(); i++) {
+	            if (!isdigit(s.contactNumber[i])) { allDigits = false; break; }
+	        }
+	        if (allDigits) break;
+	    }
+	    cout << "Invalid contact number. Please enter again.\n";
+	}
+    
+    // Validate faculty
+	string validFaculties[] = {"FCI", "FAM", "LKCFES", "FEGT", "MKFMHS", "FED"};
+	int numValidFaculties = 6;
+	
+	while (true) {
+	    cout << "\nSelect Faculty:\n";
+	    cout << "1. FCI\n";
+	    cout << "2. FAM\n";
+	    cout << "3. LKCFES\n";
+	    cout << "4. FEGT\n";
+	    cout << "5. MKFMHS\n";
+	    cout << "6. FED\n";
+	    cout << "Enter choice (1-6): ";
+	
+	    int facChoice;
+	    cin >> facChoice;
+	
+	    if (facChoice >= 1 && facChoice <= numValidFaculties) {
+	        s.faculty = validFaculties[facChoice - 1];
+	        break;
+	    }
+	    cin.clear();
+    	cin.ignore(1000, '\n');
+	    cout << "Invalid choice. Please select a number between 1 and 6.\n";
+	}
+	cin.ignore();
+	
+    // Validate Vehicle Plate
+	while (true) {
+	    cout << "Enter Vehicle Plate Number (3 letters followed by 4 digits, e.g. ABC1234): ";
+	    cin >> s.vehicleNumber;
+	
+	    if (s.vehicleNumber.length() == 7) {
+	        bool valid = true;
+	
+	        // Check first 3 characters are letters
+	        for (int i = 0; i < 3; i++) {
+	            if (!isalpha(s.vehicleNumber[i])) { valid = false; break; }
+	        }
+	
+	        // Check last 4 characters are digits
+	        for (int i = 3; i < 7; i++) {
+	            if (!isdigit(s.vehicleNumber[i])) { valid = false; break; }
+	        }
+	
+	        if (valid) {
+	            // Convert letters to uppercase before saving
+	            for (int i = 0; i < 3; i++) {
+	                s.vehicleNumber[i] = toupper(s.vehicleNumber[i]);
+	            }
+	            break;
+	        }
+	    }
+	    cout << "Invalid plate number. Please enter again.\n";
+	}
+    
+    // Validate vehicle type
+    while (true) {
+        cout << "Enter Vehicle Type (Car/Motorcycle): ";
+	    cin >> s.vehicleType;
+	
+	    // Convert input to lowercase for comparison
+	    string lowerType = s.vehicleType;
+	    for (int i = 0; i < lowerType.length(); i++) {
+	        lowerType[i] = tolower(lowerType[i]);
+	    }
+	
+	    if (lowerType == "car") { s.vehicleType = "Car"; break; }
+	    else if (lowerType == "motorcycle") { s.vehicleType = "Motorcycle"; break; }
+	    else cout << "Invalid vehicle type. Please enter again.\n";
+    }
+    
+    s.regDate = getCurrentDate(); 
+    s.isActive = true;             
 
     students[studentCount++] = s;
     saveStudents();
@@ -340,12 +461,23 @@ void viewUpdateProfile(Student &s) {
     } while (choice != 6);
 }
 
-//Student applying for monthly pass
 string getCurrentDate() {
-    string date;
-    cout << "Enter date (YYYY-MM-DD): ";
-    cin >> date;
-    return date;
+    time_t t = time(0);
+    tm* now = localtime(&t);
+
+    int year  = now->tm_year + 1900;  // tm_year counts from 1900
+    int month = now->tm_mon + 1;      // tm_mon is 0-indexed (0 = January)
+    int day   = now->tm_mday;
+
+    // Manual formatting to get YYYY-MM-DD
+    stringstream ss;
+    ss << year
+       << "-"
+       << (month < 10 ? "0" : "") << month   // pad single digit months
+       << "-"
+       << (day < 10 ? "0" : "") << day;       // pad single digit days
+
+    return ss.str();
 }
 
 void applyParkingPass(Student &s) {
@@ -490,6 +622,10 @@ int findStudent(string id) {
 
 void saveStudents() {
     ofstream file("students.txt");
+    if (!file) {
+        cout << "ERROR: Could not open students.txt for writing!\n";
+        return;
+    }
     for (int i = 0; i < studentCount; i++) {
         Student &s = students[i];
         file << s.studentID << "|"
