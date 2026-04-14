@@ -53,6 +53,13 @@ int adminCount = 0;
 void loadStudents();
 void loadAdmins();
 void registerStudent();
+string validateStudentID();
+string validatePassword();
+string validateName();
+string validateContactNumber();
+string validateFaculty();
+string validateVehiclePlate();
+string validateVehicleType();
 int login(int& index);
 
 void saveParkingPasses();
@@ -78,32 +85,39 @@ int main()
     loadAdmins();
     loadParkingPasses();
     
-    int mainChoice;
+    int mainChoice = 0;
     do {
         cout << "\n=== MPKJ Monthly Car Parking Pass System ===\n";
         cout << "1. Login\n";
         cout << "2. Register New Student\n";
         cout << "3. Exit System\n";
         cout << "Enter your choice: ";
-        cin >> mainChoice;
 
-        if (mainChoice == 1) {
-            int index = -1;
-            int userType = login(index);
+        if (!(cin >> mainChoice)) {
+            cin.clear();
+            cin.ignore(1000, '\n');
+            mainChoice = 0;
+        }
 
-            if (userType == 1) {
-                // Show student menu, pass students[index] around as needed
-                studentMenu(students[index]);
-            } else if (userType == 2) {
-                // Show admin menu, pass admins[index] around as needed
-                adminMenu(admins[index]);
+        switch (mainChoice) {
+            case 1: {
+                int index = -1;
+                int userType = login(index);
+                if (userType == 1) {
+                    studentMenu(students[index]);
+                } else if (userType == 2) {
+                    adminMenu(admins[index]);
+                }
+                break;
             }
-        } else if (mainChoice == 2) {
-            registerStudent();
-        } else if (mainChoice == 3) {
-            cout << "Exiting system. Goodbye!\n";
-        } else {
-            cout << "Invalid choice.\n";
+            case 2:
+                registerStudent();
+                break;
+            case 3:
+                cout << "Exiting system. Goodbye!\n";
+                break;
+            default:
+                cout << "Invalid input. Please enter 1, 2, or 3.\n";
         }
     } while (mainChoice != 3);
     
@@ -155,144 +169,140 @@ void registerStudent() {
     cout << "\n===== NEW STUDENT REGISTRATION =====\n";
 
     Student s;
-    
-    // Validate ID
-    while (true) {
-        cout << "Enter Student ID (7 digits, starting with 2): ";
-        cin >> s.studentID;
-        if (s.studentID.length() == 7 && s.studentID[0] == '2') {
-            bool allDigits = true;
-            for (int i = 0; i < 7; i++) {
-                if (!isdigit(s.studentID[i])) { allDigits = false; break; }
-            }
-            if (allDigits) break;
-        }
-        cout << "Invalid Student ID. Please enter again.\n";
-    }
 
-    // Prevent duplicate registrations
+    s.studentID = validateStudentID();
+
     if (findStudent(s.studentID) != -1) {
         cout << "This Student ID is already registered. Please login instead.\n";
         return;
     }
 
-    // Validate password
-    while (true) {
-        cout << "Enter Password (at least 6 characters): ";
-        cin >> s.password;
-        if (s.password.length() >= 6) break;
-        cout << "Password too short. Please enter again.\n";
-    }
-    
-    // Validate full name
-	cin.ignore();
-	while (true) {
-	    cout << "Enter Full Name: ";
-	    getline(cin, s.name);
-	    bool validName = s.name.length() >= 2;
-	    for (int i = 0; i < s.name.length(); i++) {
-	        if (!isalpha(s.name[i]) && s.name[i] != ' ') {
-	            validName = false;
-	            break;
-	        }
-	    }
-	    if (validName) break;
-	    cout << "Invalid name. Name must be at least 2 characters and can only contain letters and spaces.\n";
-	}
-	    
-    // Validate contact number
-	while (true) {
-	    cout << "Enter Contact Number (10 digits): ";
-	    cin >> s.contactNumber;
-	    if (s.contactNumber.length() == 10) {
-	        bool allDigits = true;
-	        for (int i = 0; i < s.contactNumber.length(); i++) {
-	            if (!isdigit(s.contactNumber[i])) { allDigits = false; break; }
-	        }
-	        if (allDigits) break;
-	    }
-	    cout << "Invalid contact number. Please enter again.\n";
-	}
-    
-    // Validate faculty
-	string validFaculties[] = {"FCI", "FAM", "LKCFES", "FEGT", "MKFMHS", "FED"};
-	int numValidFaculties = 6;
-	
-	while (true) {
-	    cout << "\nSelect Faculty:\n";
-	    cout << "1. FCI\n";
-	    cout << "2. FAM\n";
-	    cout << "3. LKCFES\n";
-	    cout << "4. FEGT\n";
-	    cout << "5. MKFMHS\n";
-	    cout << "6. FED\n";
-	    cout << "Enter choice (1-6): ";
-	
-	    int facChoice;
-	    cin >> facChoice;
-	
-	    if (facChoice >= 1 && facChoice <= numValidFaculties) {
-	        s.faculty = validFaculties[facChoice - 1];
-	        break;
-	    }
-	    cin.clear();
-    	cin.ignore(1000, '\n');
-	    cout << "Invalid choice. Please select a number between 1 and 6.\n";
-	}
-	cin.ignore();
-	
-    // Validate Vehicle Plate
-	while (true) {
-	    cout << "Enter Vehicle Plate Number (3 letters followed by 4 digits, e.g. ABC1234): ";
-	    cin >> s.vehicleNumber;
-	
-	    if (s.vehicleNumber.length() == 7) {
-	        bool valid = true;
-	
-	        // Check first 3 characters are letters
-	        for (int i = 0; i < 3; i++) {
-	            if (!isalpha(s.vehicleNumber[i])) { valid = false; break; }
-	        }
-	
-	        // Check last 4 characters are digits
-	        for (int i = 3; i < 7; i++) {
-	            if (!isdigit(s.vehicleNumber[i])) { valid = false; break; }
-	        }
-	
-	        if (valid) {
-	            // Convert letters to uppercase before saving
-	            for (int i = 0; i < 3; i++) {
-	                s.vehicleNumber[i] = toupper(s.vehicleNumber[i]);
-	            }
-	            break;
-	        }
-	    }
-	    cout << "Invalid plate number. Please enter again.\n";
-	}
-    
-    // Validate vehicle type
-    while (true) {
-        cout << "Enter Vehicle Type (Car/Motorcycle): ";
-	    cin >> s.vehicleType;
-	
-	    // Convert input to lowercase for comparison
-	    string lowerType = s.vehicleType;
-	    for (int i = 0; i < lowerType.length(); i++) {
-	        lowerType[i] = tolower(lowerType[i]);
-	    }
-	
-	    if (lowerType == "car") { s.vehicleType = "Car"; break; }
-	    else if (lowerType == "motorcycle") { s.vehicleType = "Motorcycle"; break; }
-	    else cout << "Invalid vehicle type. Please enter again.\n";
-    }
-    
-    s.regDate = getCurrentDate(); 
-    s.isActive = true;             
+    s.password      = validatePassword();
+    s.name          = validateName();
+    s.contactNumber = validateContactNumber();
+    s.faculty       = validateFaculty();
+    s.vehicleNumber = validateVehiclePlate();
+    s.vehicleType   = validateVehicleType();
+    s.regDate       = getCurrentDate();
+    s.isActive      = true;
 
     students[studentCount++] = s;
     saveStudents();
 
     cout << "\nRegistration successful! You may now login.\n";
+}
+
+string validateStudentID() {
+    string id;
+    while (true) {
+        cout << "Enter Student ID (7 digits, starting with 2): ";
+        cin >> id;
+        if (id.length() == 7 && id[0] == '2') {
+            bool allDigits = true;
+            for (int i = 0; i < 7; i++) {
+                if (!isdigit(id[i])) { allDigits = false; break; }
+            }
+            if (allDigits) return id;
+        }
+        cout << "Invalid Student ID. Please enter again.\n";
+    }
+}
+
+string validatePassword() {
+    string password;
+    while (true) {
+        cout << "Enter Password (at least 6 characters): ";
+        cin >> password;
+        if (password.length() >= 6) return password;
+        cout << "Password too short. Please enter again.\n";
+    }
+}
+
+string validateName() {
+    string name;
+    cin.ignore();
+    while (true) {
+        cout << "Enter Full Name: ";
+        getline(cin, name);
+        bool valid = name.length() >= 2;
+        for (int i = 0; i < name.length(); i++) {
+            if (!isalpha(name[i]) && name[i] != ' ') { valid = false; break; }
+        }
+        if (valid) return name;
+        cout << "Invalid name. Name must be at least 2 characters and contain only letters and spaces.\n";
+    }
+}
+
+string validateContactNumber() {
+    string contact;
+    while (true) {
+        cout << "Enter Contact Number (10 digits): ";
+        cin >> contact;
+        if (contact.length() == 10) {
+            bool allDigits = true;
+            for (int i = 0; i < contact.length(); i++) {
+                if (!isdigit(contact[i])) { allDigits = false; break; }
+            }
+            if (allDigits) return contact;
+        }
+        cout << "Invalid contact number. Please enter again.\n";
+    }
+}
+
+string validateFaculty() {
+    string validFaculties[] = {"FCI", "FAM", "LKCFES", "FEGT", "MKFMHS", "FED"};
+    int numValidFaculties = 6;
+    while (true) {
+        cout << "\nSelect Faculty:\n";
+        cout << "1. FCI\n";
+        cout << "2. FAM\n";
+        cout << "3. LKCFES\n";
+        cout << "4. FEGT\n";
+        cout << "5. MKFMHS\n";
+        cout << "6. FED\n";
+        cout << "Enter choice (1-6): ";
+        int facChoice;
+        cin >> facChoice;
+        if (facChoice >= 1 && facChoice <= numValidFaculties) return validFaculties[facChoice - 1];
+        cin.clear();
+        cin.ignore(1000, '\n');
+        cout << "Invalid choice. Please select a number between 1 and 6.\n";
+    }
+}
+
+string validateVehiclePlate() {
+    string plate;
+    while (true) {
+        cout << "Enter Vehicle Plate Number (3 letters followed by 4 digits, e.g. ABC1234): ";
+        cin >> plate;
+        if (plate.length() == 7) {
+            bool valid = true;
+            for (int i = 0; i < 3; i++) {
+                if (!isalpha(plate[i])) { valid = false; break; }
+            }
+            for (int i = 3; i < 7; i++) {
+                if (!isdigit(plate[i])) { valid = false; break; }
+            }
+            if (valid) {
+                for (int i = 0; i < 3; i++) plate[i] = toupper(plate[i]);
+                return plate;
+            }
+        }
+        cout << "Invalid plate number. Please enter again.\n";
+    }
+}
+
+string validateVehicleType() {
+    string type;
+    while (true) {
+        cout << "Enter Vehicle Type (Car/Motorcycle): ";
+        cin >> type;
+        string lower = type;
+        for (int i = 0; i < lower.length(); i++) lower[i] = tolower(lower[i]);
+        if (lower == "car") return "Car";
+        if (lower == "motorcycle") return "Motorcycle";
+        cout << "Invalid vehicle type. Please enter again.\n";
+    }
 }
 
 int login(int& index) {
@@ -369,7 +379,7 @@ void loadParkingPasses() {
 }
 
 void viewUpdateProfile(Student &s) {
-    int choice;
+    int choice = 0;
     do {
         cout << "\n=== MY PROFILE ===\n";
         cout << "Student ID     : " << s.studentID << endl;
@@ -388,72 +398,49 @@ void viewUpdateProfile(Student &s) {
         cout << "5. Password\n";
         cout << "6. Back to Main Menu\n";
         cout << "Enter your choice: ";
-        cin >> choice;
+
+        if (!(cin >> choice)) {
+            cin.clear();
+            cin.ignore(1000, '\n');
+            choice = 0;
+        }
 
         switch (choice) {
             case 1:
-                cout << "Enter new contact number: ";
-                cin >> s.contactNumber;
+                s.contactNumber = validateContactNumber();
                 cout << "Contact number updated successfully.\n";
                 break;
-
             case 2:
-                cout << "Enter new faculty: ";
-                cin.ignore();
-                getline(cin, s.faculty);
+                s.faculty = validateFaculty();
                 cout << "Faculty updated successfully.\n";
                 break;
-
             case 3:
-                cout << "Enter new vehicle plate number: ";
-                cin >> s.vehicleNumber;
+                s.vehicleNumber = validateVehiclePlate();
                 cout << "Vehicle plate number updated successfully.\n";
                 break;
-
-            case 4: {
-                cout << "Enter new vehicle type (Car/Motorcycle): ";
-                cin >> s.vehicleType;
-                // Simple validation
-                while (s.vehicleType != "Car" && s.vehicleType != "Motorcycle" &&
-                       s.vehicleType != "car" && s.vehicleType != "motorcycle") {
-                    cout << "Invalid type. Please enter Car or Motorcycle: ";
-                    cin >> s.vehicleType;
-                }
+            case 4:
+                s.vehicleType = validateVehicleType();
                 cout << "Vehicle type updated successfully.\n";
                 break;
-            }
-
             case 5: {
                 string oldPassword;
                 cout << "Enter current password: ";
                 cin >> oldPassword;
                 if (oldPassword != s.password) {
-                    cout << "Incorrect current password. Failed to update.\n";
+                    cout << "Incorrect current password. Update cancelled.\n";
                     break;
                 }
-                string newPassword, confirmPassword;
-                cout << "Enter new password: ";
-                cin >> newPassword;
-                cout << "Confirm new password: ";
-                cin >> confirmPassword;
-                if (newPassword != confirmPassword) {
-                    cout << "Passwords do not match. Failed to update.\n";
-                    break;
-                }
-                s.password = newPassword;
+                s.password = validatePassword();
                 cout << "Password updated successfully.\n";
                 break;
             }
-
             case 6:
                 cout << "Returning to main menu...\n";
                 break;
-
             default:
-                cout << "Invalid choice. Please try again.\n";
+                cout << "Invalid input. Please enter 1 to 6.\n";
         }
 
-        // Save to file after every successful update
         if (choice >= 1 && choice <= 5) {
             saveStudents();
         }
@@ -583,25 +570,38 @@ void approveRejectPass() {
     string passID;
     cout << "Enter Pass ID to process: ";
     cin >> passID;
-    
+
     for (int i = 0; i < passCount; i++) {
-        if (parkingPasses[i].passID == passID && 
+        if (parkingPasses[i].passID == passID &&
             parkingPasses[i].status == "Pending") {
-            
-            cout << "1. Approve\n2. Reject\nChoice: ";
-            int choice;
-            cin >> choice;
-            
-            if (choice == 1) {
-                parkingPasses[i].status = "Active";
-                cout << "Enter start date (YYYY-MM-DD): ";
-                cin >> parkingPasses[i].startDate;
-                cout << "Enter end date (YYYY-MM-DD): ";
-                cin >> parkingPasses[i].endDate;
-                cout << "Pass approved!\n";
-            } else if (choice == 2) {
-                parkingPasses[i].status = "Rejected";
-                cout << "Pass rejected!\n";
+
+            int choice = 0;
+            cout << "1. Approve\n";
+            cout << "2. Reject\n";
+            cout << "Choice: ";
+
+            if (!(cin >> choice)) {
+                cin.clear();
+                cin.ignore(1000, '\n');
+                choice = 0;
+            }
+
+            switch (choice) {
+                case 1:
+                    parkingPasses[i].status = "Active";
+                    cout << "Enter start date (YYYY-MM-DD): ";
+                    cin >> parkingPasses[i].startDate;
+                    cout << "Enter end date (YYYY-MM-DD): ";
+                    cin >> parkingPasses[i].endDate;
+                    cout << "Pass approved!\n";
+                    break;
+                case 2:
+                    parkingPasses[i].status = "Rejected";
+                    cout << "Pass rejected!\n";
+                    break;
+                default:
+                    cout << "Invalid input. Pass not processed.\n";
+                    return;
             }
             saveParkingPasses();
             return;
@@ -740,7 +740,12 @@ void studentMenu(Student &s) {
         cout << "4. View / Update My Profile\n";
         cout << "5. Logout\n";
         cout << "Enter your choice: ";
-        cin >> choice;
+
+        if (!(cin >> choice)) {
+            cin.clear();
+            cin.ignore(1000, '\n');
+            choice = 0;
+        }
 
         switch(choice) {
             case 1: applyParkingPass(s); break;
@@ -748,7 +753,7 @@ void studentMenu(Student &s) {
             case 3: viewMyPassHistory(s); break;
             case 4: viewUpdateProfile(s); break;
             case 5: cout << "Logging out...\n"; break;
-            default: cout << "Invalid choice. Please try again.\n";
+            default: cout << "Invalid input. Please enter 1 to 5.\n";
         }
     } while(choice != 5);
 }
@@ -763,14 +768,19 @@ void adminMenu(Admin &a) {
         cout << "3. Generate Analytics & Summary Report\n";
         cout << "4. Logout\n";
         cout << "Enter your choice: ";
-        cin >> choice;
+        
+        if (!(cin >> choice)) {
+            cin.clear();
+            cin.ignore(1000, '\n');
+            choice = 0;
+        }
 
         switch(choice) {
             case 1: viewPendingApplications(); break;
             case 2: approveRejectPass(); break;
             case 3: generateAnalytics(); break;
             case 4: cout << "Logging out...\n"; break;
-            default: cout << "Invalid choice. Please try again.\n";
+            default: cout << "Invalid input. Please enter 1 to 4.\n";
         }
     } while(choice != 4);
 }
