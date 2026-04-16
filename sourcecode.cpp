@@ -4,6 +4,7 @@
 #include <string>
 #include <sstream>
 #include <ctime>
+#include <cstdlib>
 using namespace std;
 
 struct Student {
@@ -67,6 +68,12 @@ void loadParkingPasses();
 void viewUpdateProfile(Student &s);
 string getCurrentDate(); 
 void applyParkingPass(Student &s);
+bool parseDate(const string &date, int &y, int &m, int &d);
+bool isLeapYear(int y);
+int daysInMonth(int y, int m);
+string formatDate(int y, int m, int d);
+string addDays(const string &date, int daysToAdd);
+string addMonths(const string &date, int monthsToAdd);
 void renewParkingPass(Student &s);
 void viewMyPassHistory(Student &s);
 void viewPendingApplications();
@@ -468,7 +475,13 @@ string getCurrentDate() {
 }
 
 void applyParkingPass(Student &s) {
-    // Check if there are already active monthly passes.
+	// Capacity check
+    if (passCount >= NO_OF_STUDENTS) {
+        cout << "System cannot accept more parking pass records.\n";
+        return;
+    }
+    
+    // Check if there are already active monthly passes
     for (int i = 0; i < passCount; i++) {
         if (parkingPasses[i].studentID == s.studentID && 
             (parkingPasses[i].status == "Active" || parkingPasses[i].status == "Pending")) {
@@ -499,32 +512,164 @@ void applyParkingPass(Student &s) {
     cout << "Please wait for admin approval.\n";
 }
 
+bool parseDate(const string &date, int &y, int &m, int &d) {
+    // Expected format: YYYY-MM-DD
+    if (date.length() != 10) return false;
+    if (date[4] != '-' || date[7] != '-') return false;
+
+    string ys = date.substr(0, 4);
+    string ms = date.substr(5, 2);
+    string ds = date.substr(8, 2);
+
+    // Ensure all are digits
+    for (int i = 0; i < (int)ys.length(); i++) {
+        if (!isdigit(ys[i])) return false;
+    }
+    for (int i = 0; i < (int)ms.length(); i++) {
+        if (!isdigit(ms[i])) return false;
+    }
+    for (int i = 0; i < (int)ds.length(); i++) {
+        if (!isdigit(ds[i])) return false;
+    }
+
+    stringstream yss(ys), mss(ms), dss(ds);
+    yss >> y;
+    mss >> m;
+    dss >> d;
+
+    if (yss.fail() || mss.fail() || dss.fail()) return false;
+
+    if (m < 1 || m > 12) return false;
+
+    int dim = daysInMonth(y, m);
+    if (d < 1 || d > dim) return false;
+
+    return true;
+}
+
+bool isLeapYear(int y) {
+    return (y % 400 == 0) || (y % 4 == 0 && y % 100 != 0);
+}
+
+int daysInMonth(int y, int m) {
+    int dm[12] = {31,28,31,30,31,30,31,31,30,31,30,31};
+    if (m == 2 && isLeapYear(y)) return 29;
+    return dm[m - 1];
+}
+
+string formatDate(int y, int m, int d) {
+    stringstream ss;
+    ss << y << "-"
+       << (m < 10 ? "0" : "") << m << "-"
+       << (d < 10 ? "0" : "") << d;
+    return ss.str();
+}
+
+string addDays(const string &date, int daysToAdd) {
+    int y, m, d;
+    if (!parseDate(date, y, m, d)) return "";
+
+    while (daysToAdd > 0) {
+        int dim = daysInMonth(y, m);
+        if (d < dim) d++;
+        else {
+            d = 1;
+            if (m < 12) m++;
+            else { m = 1; y++; }
+        }
+        daysToAdd--;
+    }
+    return formatDate(y, m, d);
+}
+
+string addMonths(const string &date, int monthsToAdd) {
+    int y, m, d;
+    if (!parseDate(date, y, m, d)) return "";
+
+    m += monthsToAdd;
+    while (m > 12) { m -= 12; y++; }
+
+    int dim = daysInMonth(y, m);
+    if (d > dim) d = dim;
+
+    return formatDate(y, m, d);
+}
+
 // Student renew parking pass
 void renewParkingPass(Student &s) {
+    // Block duplicate pending renewal/application
     for (int i = 0; i < passCount; i++) {
-        if (parkingPasses[i].studentID == s.studentID && 
-            parkingPasses[i].status == "Active") {
-            
-            cout << "Current pass expires on: " << parkingPasses[i].endDate << endl;
-            cout << "Renew for another month? (y/n): ";
-            char choice;
-            cin >> choice;
-            
-            if (choice == 'y' || choice == 'Y') {
-                // Update new end date 
-                string newEndDate;
-                cout << "Enter new end date (YYYY-MM-DD): ";
-                cin >> newEndDate;
-                parkingPasses[i].endDate = newEndDate;
-                parkingPasses[i].renewalCount++;
-                parkingPasses[i].status = "Pending";  // Needs re-approval
-                saveParkingPasses();
-                cout << "Renewal request submitted for approval.\n";
-            }
+        if (parkingPasses[i].studentID == s.studentID &&
+            parkingPasses[i].status == "Pending") {
+            cout << "You already have a pending application/renewal.\n";
             return;
         }
     }
-    cout << "No active parking pass found to renew.\n";
+
+    // Find latest active pass by endDate 
+    int activeIdx = -1;
+    string latestEnd = "";
+    for (int i = 0; i < passCount; i++) {
+        if (parkingPasses[i].studentID == s.studentID &&
+            parkingPasses[i].status == "Active") {
+            if (activeIdx == -1 || parkingPasses[i].endDate > latestEnd) {
+                activeIdx = i;
+                latestEnd = parkingPasses[i].endDate;
+            }
+        }
+    }
+
+    if (activeIdx == -1) {
+        cout << "No active parking pass found to renew.\n";
+        return;
+    }
+
+    // Validate active pass end date
+    int y, m, d;
+    if (!parseDate(parkingPasses[activeIdx].endDate, y, m, d)) {
+        cout << "Current active pass has invalid end date. Please contact admin.\n";
+        return;
+    }
+
+    int months = 0;
+    cout << "Current active pass ends on: " << parkingPasses[activeIdx].endDate << endl;
+    cout << "How many month(s) to renew? (1-3): ";
+    if (!(cin >> months) || months < 1 || months > 3) {
+        cin.clear();
+        cin.ignore(1000, '\n');
+        cout << "Invalid input. Renewal months must be between 1 and 3.\n";
+        return;
+    }
+
+    // Create new renewal request
+    ParkingPass renewal;
+    stringstream ss;
+    ss << "P" << (passCount + 1001);
+    renewal.passID = ss.str();
+
+    renewal.studentID = s.studentID;
+    renewal.startDate = addDays(parkingPasses[activeIdx].endDate, 1); // next day
+    renewal.endDate   = addMonths(parkingPasses[activeIdx].endDate, months); // extend from current end
+    renewal.status = "Pending";
+    renewal.appliedDate = getCurrentDate();
+    renewal.amount = MONTHLY_RATE * months;
+    renewal.paymentStatus = "Unpaid";
+    renewal.paymentDate = "";
+    renewal.renewalCount = parkingPasses[activeIdx].renewalCount + 1;
+
+    if (passCount >= NO_OF_STUDENTS) {
+        cout << "System cannot accept more pass records.\n";
+        return;
+    }
+
+    parkingPasses[passCount++] = renewal;
+    saveParkingPasses();
+
+    cout << "\nRenewal request submitted successfully.\n";
+    cout << "Pass ID       : " << renewal.passID << endl;
+    cout << "Renewal Period: " << renewal.startDate << " to " << renewal.endDate << endl;
+    cout << "Amount        : RM " << renewal.amount << endl;
+    cout << "Status        : Pending (waiting admin approval)\n";
 }
 
 void viewMyPassHistory(Student &s) {
@@ -575,38 +720,45 @@ void approveRejectPass() {
         if (parkingPasses[i].passID == passID &&
             parkingPasses[i].status == "Pending") {
 
-            int choice = 0;
             cout << "1. Approve\n";
             cout << "2. Reject\n";
             cout << "Choice: ";
+            int choice = 0;
 
             if (!(cin >> choice)) {
                 cin.clear();
                 cin.ignore(1000, '\n');
-                choice = 0;
+                cout << "Invalid input. Pass not processed.\n";
+                return;
             }
 
-            switch (choice) {
-                case 1:
-                    parkingPasses[i].status = "Active";
-                    cout << "Enter start date (YYYY-MM-DD): ";
-                    cin >> parkingPasses[i].startDate;
-                    cout << "Enter end date (YYYY-MM-DD): ";
-                    cin >> parkingPasses[i].endDate;
-                    cout << "Pass approved!\n";
-                    break;
-                case 2:
-                    parkingPasses[i].status = "Rejected";
-                    cout << "Pass rejected!\n";
-                    break;
-                default:
-                    cout << "Invalid input. Pass not processed.\n";
-                    return;
+            if (choice == 1) {
+                // If dates are empty (likely new application), auto-fill 1 month from today
+                if (parkingPasses[i].startDate == "" || parkingPasses[i].endDate == "") {
+                    string today = getCurrentDate();
+                    parkingPasses[i].startDate = today;
+                    parkingPasses[i].endDate = addMonths(today, 1);
+                }
+
+                parkingPasses[i].status = "Active";
+                cout << "Pass approved and activated.\n";
+                cout << "Start Date: " << parkingPasses[i].startDate << endl;
+                cout << "End Date  : " << parkingPasses[i].endDate << endl;
             }
+            else if (choice == 2) {
+                parkingPasses[i].status = "Rejected";
+                cout << "Pass rejected.\n";
+            }
+            else {
+                cout << "Invalid input. Pass not processed.\n";
+                return;
+            }
+
             saveParkingPasses();
             return;
         }
     }
+
     cout << "Pending pass not found.\n";
 }
 
