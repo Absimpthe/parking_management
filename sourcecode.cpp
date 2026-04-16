@@ -4,7 +4,6 @@
 #include <string>
 #include <sstream>
 #include <ctime>
-#include <cstdlib>
 using namespace std;
 
 struct Student {
@@ -66,6 +65,7 @@ int login(int& index);
 void saveParkingPasses();
 void loadParkingPasses();
 void viewUpdateProfile(Student &s);
+void makePayment(Student &s);
 string getCurrentDate(); 
 void applyParkingPass(Student &s);
 bool parseDate(const string &date, int &y, int &m, int &d);
@@ -78,6 +78,7 @@ void renewParkingPass(Student &s);
 void viewMyPassHistory(Student &s);
 void viewPendingApplications();
 void approveRejectPass();
+void viewCurrentAppStatus(Student &s);
 
 int findStudent(string id);
 void saveStudents();
@@ -453,6 +454,78 @@ void viewUpdateProfile(Student &s) {
         }
 
     } while (choice != 6);
+}
+
+void makePayment(Student &s) {
+    int targetIndex = -1;
+
+    // Find latest approved but unpaid pass for this student
+    for (int i = passCount - 1; i >= 0; i--) {
+        if (parkingPasses[i].studentID == s.studentID &&
+            parkingPasses[i].status == "Active" &&
+            parkingPasses[i].paymentStatus == "Unpaid") {
+            targetIndex = i;
+            break;
+        }
+    }
+
+    if (targetIndex == -1) {
+        cout << "\nNo approved unpaid pass found.\n";
+        cout << "Either you have no approved application, or payment is already completed.\n";
+        return;
+    }
+
+    ParkingPass &p = parkingPasses[targetIndex];
+
+    cout << "\n===== PAYMENT =====\n";
+    cout << "Pass ID      : " << p.passID << endl;
+    cout << "Student ID   : " << p.studentID << endl;
+    cout << "Pass Period  : " << (p.startDate.empty() ? "N/A" : p.startDate)
+         << " to " << (p.endDate.empty() ? "N/A" : p.endDate) << endl;
+    cout << fixed << setprecision(2);
+    cout << "Amount Due   : RM " << p.amount << endl;
+    cout << "Status       : " << p.paymentStatus << endl;
+
+    int methodChoice = 0;
+    cout << "\nSelect Payment Method (Simulation):\n";
+    cout << "1. FPX Online Banking\n";
+    cout << "2. Debit/Credit Card\n";
+    cout << "3. E-Wallet\n";
+    cout << "4. Cancel\n";
+    cout << "Enter choice: ";
+
+    if (!(cin >> methodChoice)) {
+        cin.clear();
+        cin.ignore(1000, '\n');
+        cout << "Invalid input. Payment cancelled.\n";
+        return;
+    }
+
+    if (methodChoice == 4) {
+        cout << "Payment cancelled.\n";
+        return;
+    }
+
+    if (methodChoice < 1 || methodChoice > 3) {
+        cout << "Invalid payment method. Payment cancelled.\n";
+        return;
+    }
+
+    char confirm;
+    cout << "Confirm payment of RM " << p.amount << "? (Y/N): ";
+    cin >> confirm;
+
+    if (confirm == 'Y' || confirm == 'y') {
+        p.paymentStatus = "Paid";
+        p.paymentDate = getCurrentDate();
+        saveParkingPasses();
+
+        cout << "\nPayment successful (SIMULATED).\n";
+        cout << "Payment Date : " << p.paymentDate << endl;
+        cout << "Thank you.\n";
+    } else {
+        cout << "Payment not completed.\n";
+    }
 }
 
 string getCurrentDate() {
@@ -887,11 +960,12 @@ void studentMenu(Student &s) {
     do {
         cout << "\n=== STUDENT MENU ===\n";
         cout << "1. Apply New Parking Pass\n";
-        cout << "2. Renew Parking Pass\n";
-        cout << "3. View My Pass History\n";
-        cout << "4. View / Update My Profile\n";
-        cout << "5. Logout\n";
-        cout << "Enter your choice: ";
+		cout << "2. Renew Parking Pass\n";
+		cout << "3. Make Payment\n";
+		cout << "4. View Current Application Status\n";
+		cout << "5. View My Pass History\n";
+		cout << "6. View / Update My Profile\n";
+		cout << "7. Logout\n";
 
         if (!(cin >> choice)) {
             cin.clear();
@@ -900,14 +974,16 @@ void studentMenu(Student &s) {
         }
 
         switch(choice) {
-            case 1: applyParkingPass(s); break;
-            case 2: renewParkingPass(s); break;
-            case 3: viewMyPassHistory(s); break;
-            case 4: viewUpdateProfile(s); break;
-            case 5: cout << "Logging out...\n"; break;
-            default: cout << "Invalid input. Please enter 1 to 5.\n";
-        }
-    } while(choice != 5);
+		    case 1: applyParkingPass(s); break;
+		    case 2: renewParkingPass(s); break;
+		    case 3: makePayment(s); break;
+		    case 4: viewCurrentApplicationStatus(s); break;
+		    case 5: viewMyPassHistory(s); break;
+		    case 6: viewUpdateProfile(s); break;
+		    case 7: cout << "Logging out...\n"; break;
+		    default: cout << "Invalid input. Please enter 1 to 7.\n";
+		}
+    } while(choice != 7);
 }
 
 // 4. Admin Menu
@@ -935,4 +1011,53 @@ void adminMenu(Admin &a) {
             default: cout << "Invalid input. Please enter 1 to 4.\n";
         }
     } while(choice != 4);
+}
+
+void viewCurrentAppStatus(Student &s) {
+    int latestIdx = -1;
+
+    // Find latest record for this student (most recent by appliedDate)
+    for (int i = 0; i < passCount; i++) {
+        if (parkingPasses[i].studentID == s.studentID) {
+            if (latestIdx == -1 || parkingPasses[i].appliedDate > parkingPasses[latestIdx].appliedDate) {
+                latestIdx = i;
+            }
+        }
+    }
+
+    if (latestIdx == -1) {
+        cout << "\n=== CURRENT APPLICATION STATUS ===\n";
+        cout << "No parking pass application/renewal found.\n";
+        cout << "Please apply for a new parking pass first.\n";
+        return;
+    }
+
+    ParkingPass &p = parkingPasses[latestIdx];
+
+    cout << "\n=== CURRENT APPLICATION STATUS ===\n";
+    cout << "Pass ID        : " << p.passID << endl;
+    cout << "Applied Date   : " << p.appliedDate << endl;
+    cout << "Status         : " << p.status << endl;
+    cout << "Pass Period    : "
+         << (p.startDate.empty() ? "N/A" : p.startDate)
+         << " to "
+         << (p.endDate.empty() ? "N/A" : p.endDate) << endl;
+    cout << fixed << setprecision(2);
+    cout << "Amount         : RM " << p.amount << endl;
+    cout << "Payment Status : " << p.paymentStatus << endl;
+    cout << "Payment Date   : " << (p.paymentDate.empty() ? "N/A" : p.paymentDate) << endl;
+
+    // Next-step guidance
+    cout << "\nNext Action: ";
+    if (p.status == "Pending") {
+        cout << "Please wait for admin approval.\n";
+    } else if (p.status == "Rejected") {
+        cout << "Your application was rejected. Please submit a new application.\n";
+    } else if (p.status == "Active" && p.paymentStatus == "Unpaid") {
+        cout << "Your pass is approved. Please proceed to 'Make Payment'.\n";
+    } else if (p.status == "Active" && p.paymentStatus == "Paid") {
+        cout << "No action needed. Your pass is active and paid.\n";
+    } else {
+        cout << "Please check with admin for further details.\n";
+    }
 }
