@@ -61,7 +61,6 @@ string validateFaculty();
 string validateVehiclePlate();
 string validateVehicleType();
 int login(int& index);
-
 void saveParkingPasses();
 void loadParkingPasses();
 void viewUpdateProfile(Student &s);
@@ -74,12 +73,13 @@ int daysInMonth(int y, int m);
 string formatDate(int y, int m, int d);
 string addDays(const string &date, int daysToAdd);
 string addMonths(const string &date, int monthsToAdd);
+time_t dateToTimeT(const string &date);
+int daysBetween(const string &fromDate, const string &toDate);
 void renewParkingPass(Student &s);
 void viewMyPassHistory(Student &s);
 void viewPendingApplications();
 void approveRejectPass();
 void viewCurrentAppStatus(Student &s);
-
 int findStudent(string id);
 void saveStudents();
 void checkExpirationAlert(Student &s);
@@ -668,6 +668,31 @@ string addMonths(const string &date, int monthsToAdd) {
     return formatDate(y, m, d);
 }
 
+time_t dateToTimeT(const string &date) {
+    int y, m, d;
+    if (!parseDate(date, y, m, d)) return (time_t)-1;
+
+    tm t = {};
+    t.tm_year = y - 1900;
+    t.tm_mon  = m - 1;
+    t.tm_mday = d;
+    t.tm_hour = 0;
+    t.tm_min  = 0;
+    t.tm_sec  = 0;
+
+    return mktime(&t);
+}
+
+int daysBetween(const string &fromDate, const string &toDate) {
+    time_t a = dateToTimeT(fromDate);
+    time_t b = dateToTimeT(toDate);
+    if (a == (time_t)-1 || b == (time_t)-1) return 999999;
+
+    double diffSec = difftime(b, a);
+    // Convert seconds to days
+    return (int)(diffSec / (60 * 60 * 24));
+}
+
 // Student renew parking pass
 void renewParkingPass(Student &s) {
     // Block duplicate pending renewal/application
@@ -977,7 +1002,7 @@ void studentMenu(Student &s) {
 		    case 1: applyParkingPass(s); break;
 		    case 2: renewParkingPass(s); break;
 		    case 3: makePayment(s); break;
-		    case 4: viewCurrentApplicationStatus(s); break;
+		    case 4: viewCurrentAppStatus(s); break;
 		    case 5: viewMyPassHistory(s); break;
 		    case 6: viewUpdateProfile(s); break;
 		    case 7: cout << "Logging out...\n"; break;
@@ -1060,4 +1085,58 @@ void viewCurrentAppStatus(Student &s) {
     } else {
         cout << "Please check with admin for further details.\n";
     }
+}
+
+void checkExpirationAlert(Student &s) {
+    // Find latest active pass
+    int activeIdx = -1;
+    string latestEnd = "";
+
+    for (int i = 0; i < passCount; i++) {
+        if (parkingPasses[i].studentID == s.studentID &&
+            parkingPasses[i].status == "Active") {
+            if (activeIdx == -1 || parkingPasses[i].endDate > latestEnd) {
+                activeIdx = i;
+                latestEnd = parkingPasses[i].endDate;
+            }
+        }
+    }
+
+    if (activeIdx == -1) return;
+
+    ParkingPass &p = parkingPasses[activeIdx];
+
+    // If endDate is missing/invalid, don't alert
+    int y, m, d;
+    if (p.endDate.empty() || !parseDate(p.endDate, y, m, d)) return;
+
+    string today = getCurrentDate();
+    int daysLeft = daysBetween(today, p.endDate);
+
+    // Check if approaching end of month
+    time_t nowT = time(0);
+    tm *now = localtime(&nowT);
+    int dayOfMonth = now->tm_mday;
+
+    bool expiringSoon = (daysLeft >= 0 && daysLeft <= 7); 
+    bool nearMonthEnd = (dayOfMonth >= 25);                
+
+    // Only show alert if relevant
+    if (!expiringSoon && !nearMonthEnd) return;
+
+    cout << "\n================== SYSTEM ALERT ==================\n";
+    cout << " [REMINDER] Parking pass renewal notice\n";
+    cout << " Active Pass ID : " << p.passID << "\n";
+    cout << " Expiry Date    : " << p.endDate << "\n";
+
+    if (expiringSoon) {
+        cout << " Status         : Expiring in " << daysLeft << " day(s)\n";
+        cout << " Action         : Please renew soon to avoid expiry.\n";
+    } else {
+        // nearMonthEnd but not necessarily within 7 days
+        cout << " Status         : Approaching month end\n";
+        cout << " Action         : Consider renewing for next month if needed.\n";
+    }
+
+    cout << "==================================================\n\n";
 }
