@@ -71,10 +71,9 @@ bool parseDate(const string &date, int &y, int &m, int &d);
 bool isLeapYear(int y);
 int daysInMonth(int y, int m);
 string formatDate(int y, int m, int d);
-string addDays(const string &date, int daysToAdd);
-string addMonths(const string &date, int monthsToAdd);
-time_t dateToTimeT(const string &date);
-int daysBetween(const string &fromDate, const string &toDate);
+string firstDayOfMonth(const string &date);
+string lastDayOfMonth(const string &date);
+string lastDayOfMonthYM(int y, int m);
 void renewParkingPass(Student &s);
 void viewMyPassHistory(Student &s);
 void viewPendingApplications();
@@ -638,59 +637,21 @@ string formatDate(int y, int m, int d) {
     return ss.str();
 }
 
-string addDays(const string &date, int daysToAdd) {
+string firstDayOfMonth(const string &date) {
     int y, m, d;
     if (!parseDate(date, y, m, d)) return "";
-
-    while (daysToAdd > 0) {
-        int dim = daysInMonth(y, m);
-        if (d < dim) d++;
-        else {
-            d = 1;
-            if (m < 12) m++;
-            else { m = 1; y++; }
-        }
-        daysToAdd--;
-    }
-    return formatDate(y, m, d);
+    return formatDate(y, m, 1);
 }
 
-string addMonths(const string &date, int monthsToAdd) {
-    int y, m, d;
-    if (!parseDate(date, y, m, d)) return "";
-
-    m += monthsToAdd;
-    while (m > 12) { m -= 12; y++; }
-
+string lastDayOfMonthYM(int y, int m) {
     int dim = daysInMonth(y, m);
-    if (d > dim) d = dim;
-
-    return formatDate(y, m, d);
+    return formatDate(y, m, dim);
 }
 
-time_t dateToTimeT(const string &date) {
+string lastDayOfMonth(const string &date) {
     int y, m, d;
-    if (!parseDate(date, y, m, d)) return (time_t)-1;
-
-    tm t = {};
-    t.tm_year = y - 1900;
-    t.tm_mon  = m - 1;
-    t.tm_mday = d;
-    t.tm_hour = 0;
-    t.tm_min  = 0;
-    t.tm_sec  = 0;
-
-    return mktime(&t);
-}
-
-int daysBetween(const string &fromDate, const string &toDate) {
-    time_t a = dateToTimeT(fromDate);
-    time_t b = dateToTimeT(toDate);
-    if (a == (time_t)-1 || b == (time_t)-1) return 999999;
-
-    double diffSec = difftime(b, a);
-    // Convert seconds to days
-    return (int)(diffSec / (60 * 60 * 24));
+    if (!parseDate(date, y, m, d)) return "";
+    return lastDayOfMonthYM(y, m);
 }
 
 // Student renew parking pass
@@ -746,11 +707,28 @@ void renewParkingPass(Student &s) {
     renewal.passID = ss.str();
 
     renewal.studentID = s.studentID;
-    renewal.startDate = addDays(parkingPasses[activeIdx].endDate, 1); // next day
-    renewal.endDate   = addMonths(parkingPasses[activeIdx].endDate, months); // extend from current end
+    // Current active ends on some month's last day.
+	// Renewal starts on the 1st of the next month.
+	int ey, em, ed;
+	if (!parseDate(parkingPasses[activeIdx].endDate, ey, em, ed)) {
+	    cout << "Current active pass has invalid end date. Please contact admin.\n";
+	    return;
+	}
+	
+	// next month (year rollover handled)
+	int startY = ey, startM = em + 1;
+	if (startM > 12) { startM = 1; startY++; }
+	
+	renewal.startDate = formatDate(startY, startM, 1);
+	
+	// End month is (start month + months - 1)
+	int endY = startY, endM = startM + (months - 1);
+	while (endM > 12) { endM -= 12; endY++; }
+	
+	renewal.endDate = lastDayOfMonthYM(endY, endM);
+	renewal.amount = MONTHLY_RATE * months;
     renewal.status = "Pending";
     renewal.appliedDate = getCurrentDate();
-    renewal.amount = MONTHLY_RATE * months;
     renewal.paymentStatus = "Unpaid";
     renewal.paymentDate = "";
     renewal.renewalCount = parkingPasses[activeIdx].renewalCount + 1;
@@ -831,18 +809,24 @@ void approveRejectPass() {
             }
 
             if (choice == 1) {
-                // If dates are empty (likely new application), auto-fill 1 month from today
-                if (parkingPasses[i].startDate == "" || parkingPasses[i].endDate == "") {
-                    string today = getCurrentDate();
-                    parkingPasses[i].startDate = today;
-                    parkingPasses[i].endDate = addMonths(today, 1);
-                }
-
-                parkingPasses[i].status = "Active";
-                cout << "Pass approved and activated.\n";
-                cout << "Start Date: " << parkingPasses[i].startDate << endl;
-                cout << "End Date  : " << parkingPasses[i].endDate << endl;
-            }
+			    string today = getCurrentDate();
+			
+			    // Calendar-month pass rule:
+			    // - If it's a new application (no dates yet), approve for the CURRENT month
+			    //   (start = first day of this month, end = last day of this month)
+			    // - If it's a renewal request, your renewParkingPass() already sets dates
+			    //   as whole months (we'll adjust renewParkingPass next), so keep them.
+			
+			    if (parkingPasses[i].startDate == "" || parkingPasses[i].endDate == "") {
+			        parkingPasses[i].startDate = firstDayOfMonth(today);
+			        parkingPasses[i].endDate   = lastDayOfMonth(today);
+			    }
+			
+			    parkingPasses[i].status = "Active";
+			    cout << "Pass approved and activated (calendar-month).\n";
+			    cout << "Start Date: " << parkingPasses[i].startDate << endl;
+			    cout << "End Date  : " << parkingPasses[i].endDate << endl;
+			}
             else if (choice == 2) {
                 parkingPasses[i].status = "Rejected";
                 cout << "Pass rejected.\n";
@@ -1088,7 +1072,7 @@ void viewCurrentAppStatus(Student &s) {
 }
 
 void checkExpirationAlert(Student &s) {
-    // Find latest active pass
+    // Find latest active pass (by endDate)
     int activeIdx = -1;
     string latestEnd = "";
 
@@ -1106,36 +1090,32 @@ void checkExpirationAlert(Student &s) {
 
     ParkingPass &p = parkingPasses[activeIdx];
 
-    // If endDate is missing/invalid, don't alert
-    int y, m, d;
-    if (p.endDate.empty() || !parseDate(p.endDate, y, m, d)) return;
-
-    string today = getCurrentDate();
-    int daysLeft = daysBetween(today, p.endDate);
-
-    // Check if approaching end of month
+    // Only alert near month end (e.g., 25th onward)
     time_t nowT = time(0);
     tm *now = localtime(&nowT);
     int dayOfMonth = now->tm_mday;
 
-    bool expiringSoon = (daysLeft >= 0 && daysLeft <= 7); 
-    bool nearMonthEnd = (dayOfMonth >= 25);                
-
-    // Only show alert if relevant
-    if (!expiringSoon && !nearMonthEnd) return;
+    if (dayOfMonth < 25) return;
 
     cout << "\n================== SYSTEM ALERT ==================\n";
-    cout << " [REMINDER] Parking pass renewal notice\n";
-    cout << " Active Pass ID : " << p.passID << "\n";
-    cout << " Expiry Date    : " << p.endDate << "\n";
+    cout << " [REMINDER] Approaching month end.\n";
+    cout << " Your active parking pass will end on: " << p.endDate << "\n";
 
-    if (expiringSoon) {
-        cout << " Status         : Expiring in " << daysLeft << " day(s)\n";
-        cout << " Action         : Please renew soon to avoid expiry.\n";
+    // Optional: if there is already a pending renewal, tell them
+    bool hasPending = false;
+    for (int i = 0; i < passCount; i++) {
+        if (parkingPasses[i].studentID == s.studentID &&
+            parkingPasses[i].status == "Pending") {
+            hasPending = true;
+            break;
+        }
+    }
+
+    if (hasPending) {
+        cout << " You already have a pending renewal/application.\n";
+        cout << " Please wait for admin approval.\n";
     } else {
-        // nearMonthEnd but not necessarily within 7 days
-        cout << " Status         : Approaching month end\n";
-        cout << " Action         : Consider renewing for next month if needed.\n";
+        cout << " Please renew for next month if you need continued access.\n";
     }
 
     cout << "==================================================\n\n";
