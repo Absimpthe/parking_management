@@ -875,29 +875,6 @@ void saveStudents() {
     file.close();
 }
 
-// 1. Expiration Alert
-void checkExpirationAlert(Student &s) {
-    bool hasActive = false;
-    string endDateStr = "";
-    
-    for(int i = 0; i < passCount; i++) {
-        if(parkingPasses[i].studentID == s.studentID && parkingPasses[i].status == "Active") {
-            hasActive = true;
-            endDateStr = parkingPasses[i].endDate;
-            break;
-        }
-    }
-    
-    if(hasActive) {
-        cout << "\n================== SYSTEM ALERT ==================" << endl;
-        cout << " [REMINDER] You have an ACTIVE parking pass." << endl;
-        cout << " Expiry Date: " << endDateStr << endl;
-        cout << " Please remember to renew before approaching month end!" << endl;
-        cout << "==================================================\n" << endl;
-    }
-}
-
-// 2. Analytics & Summary Report
 void generateAnalytics() {
     cout << "\n========== MPKJ PARKING PASS ANALYTICS ==========\n";
     
@@ -961,7 +938,6 @@ void generateAnalytics() {
     cout << "=================================================\n";
 }
 
-// 3. Student Menu
 void studentMenu(Student &s) {
     checkExpirationAlert(s);
     
@@ -995,7 +971,6 @@ void studentMenu(Student &s) {
     } while(choice != 7);
 }
 
-// 4. Admin Menu
 void adminMenu(Admin &a) {
     int choice;
     do {
