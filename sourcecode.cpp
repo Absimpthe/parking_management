@@ -74,6 +74,8 @@ string formatDate(int y, int m, int d);
 string firstDayOfMonth(const string &date);
 string lastDayOfMonth(const string &date);
 string lastDayOfMonthYM(int y, int m);
+string addOneDay(const string &date);
+string addMonthsMinusOneDay(const string &startDate, int months);
 void renewParkingPass(Student &s);
 void viewMyPassHistory(Student &s);
 void viewPendingApplications();
@@ -654,6 +656,55 @@ string lastDayOfMonth(const string &date) {
     return lastDayOfMonthYM(y, m);
 }
 
+string addOneDay(const string &date) {
+    int y, m, d;
+    if (!parseDate(date, y, m, d)) return "";
+
+    d++;
+    int dim = daysInMonth(y, m);
+    if (d > dim) {
+        d = 1;
+        m++;
+        if (m > 12) {
+            m = 1;
+            y++;
+        }
+    }
+    return formatDate(y, m, d);
+}
+
+string addMonthsMinusOneDay(const string &startDate, int months) {
+    int y, m, d;
+    if (!parseDate(startDate, y, m, d) || months < 1) return "";
+
+    // target month after adding `months`
+    int ty = y;
+    int tm = m + months;
+    while (tm > 12) { tm -= 12; ty++; }
+
+    // Same day-of-month if possible, otherwise clamp to month end
+    int targetDay = d;
+    int dimTarget = daysInMonth(ty, tm);
+    if (targetDay > dimTarget) targetDay = dimTarget;
+
+    string sameDayAfterMonths = formatDate(ty, tm, targetDay);
+
+    // End date = day before that
+    int ey, em, ed;
+    parseDate(sameDayAfterMonths, ey, em, ed);
+    ed--;
+    if (ed < 1) {
+        em--;
+        if (em < 1) {
+            em = 12;
+            ey--;
+        }
+        ed = daysInMonth(ey, em);
+    }
+
+    return formatDate(ey, em, ed);
+}
+
 // Student renew parking pass
 void renewParkingPass(Student &s) {
     // Block duplicate pending renewal/application
@@ -670,7 +721,8 @@ void renewParkingPass(Student &s) {
     string latestEnd = "";
     for (int i = 0; i < passCount; i++) {
         if (parkingPasses[i].studentID == s.studentID &&
-            parkingPasses[i].status == "Active") {
+    	parkingPasses[i].status == "Active" &&
+    	parkingPasses[i].paymentStatus == "Paid") {
             if (activeIdx == -1 || parkingPasses[i].endDate > latestEnd) {
                 activeIdx = i;
                 latestEnd = parkingPasses[i].endDate;
@@ -679,7 +731,7 @@ void renewParkingPass(Student &s) {
     }
 
     if (activeIdx == -1) {
-        cout << "No active parking pass found to renew.\n";
+        cout << "No eligible parking pass found to renew.\n";
         return;
     }
 
@@ -715,17 +767,17 @@ void renewParkingPass(Student &s) {
 	    return;
 	}
 	
-	// next month (year rollover handled)
-	int startY = ey, startM = em + 1;
-	if (startM > 12) { startM = 1; startY++; }
+	// Renewal starts the day after current active pass ends
+	string newStart = addOneDay(parkingPasses[activeIdx].endDate);
+	string newEnd   = addMonthsMinusOneDay(newStart, months);
 	
-	renewal.startDate = formatDate(startY, startM, 1);
+	if (newStart.empty() || newEnd.empty()) {
+	    cout << "Date calculation error. Please contact admin.\n";
+	    return;
+	}
 	
-	// End month is (start month + months - 1)
-	int endY = startY, endM = startM + (months - 1);
-	while (endM > 12) { endM -= 12; endY++; }
-	
-	renewal.endDate = lastDayOfMonthYM(endY, endM);
+	renewal.startDate = newStart;
+	renewal.endDate   = newEnd;
 	renewal.amount = MONTHLY_RATE * months;
     renewal.status = "Pending";
     renewal.appliedDate = getCurrentDate();
@@ -811,16 +863,18 @@ void approveRejectPass() {
             if (choice == 1) {
 			    string today = getCurrentDate();
 			
-			    // Calendar-month pass rule:
-			    // - If it's a new application (no dates yet), approve for the CURRENT month
-			    //   (start = first day of this month, end = last day of this month)
-			    // - If it's a renewal request, your renewParkingPass() already sets dates
-			    //   as whole months (we'll adjust renewParkingPass next), so keep them.
-			
 			    if (parkingPasses[i].startDate == "" || parkingPasses[i].endDate == "") {
-			        parkingPasses[i].startDate = firstDayOfMonth(today);
-			        parkingPasses[i].endDate   = lastDayOfMonth(today);
-			    }
+				    string newStart = addOneDay(today); // day after approval
+				    string newEnd   = addMonthsMinusOneDay(newStart, 1); // 1-month validity
+				
+				    if (newStart.empty() || newEnd.empty()) {
+				        cout << "Date calculation error. Pass not processed.\n";
+				        return;
+				    }
+				
+				    parkingPasses[i].startDate = newStart;
+				    parkingPasses[i].endDate   = newEnd;
+				}
 			
 			    parkingPasses[i].status = "Active";
 			    cout << "Pass approved and activated (calendar-month).\n";
