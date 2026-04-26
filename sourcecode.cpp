@@ -38,7 +38,7 @@ struct Admin {
     string contactNumber;
 };
 
-#define NO_OF_STUDENTS 200
+#define NO_OF_STUDENTS 500
 #define NO_OF_ADMINS 10
 #define MONTHLY_RATE 30.00
 
@@ -71,9 +71,6 @@ bool parseDate(const string &date, int &y, int &m, int &d);
 bool isLeapYear(int y);
 int daysInMonth(int y, int m);
 string formatDate(int y, int m, int d);
-string firstDayOfMonth(const string &date);
-string lastDayOfMonth(const string &date);
-string lastDayOfMonthYM(int y, int m);
 string addOneDay(const string &date);
 string addMonthsMinusOneDay(const string &startDate, int months);
 void renewParkingPass(Student &s);
@@ -639,23 +636,6 @@ string formatDate(int y, int m, int d) {
     return ss.str();
 }
 
-string firstDayOfMonth(const string &date) {
-    int y, m, d;
-    if (!parseDate(date, y, m, d)) return "";
-    return formatDate(y, m, 1);
-}
-
-string lastDayOfMonthYM(int y, int m) {
-    int dim = daysInMonth(y, m);
-    return formatDate(y, m, dim);
-}
-
-string lastDayOfMonth(const string &date) {
-    int y, m, d;
-    if (!parseDate(date, y, m, d)) return "";
-    return lastDayOfMonthYM(y, m);
-}
-
 string addOneDay(const string &date) {
     int y, m, d;
     if (!parseDate(date, y, m, d)) return "";
@@ -732,6 +712,7 @@ void renewParkingPass(Student &s) {
 
     if (activeIdx == -1) {
         cout << "No eligible parking pass found to renew.\n";
+        cout << "You must have an active and paid pass for renewal.\n";
         return;
     }
 
