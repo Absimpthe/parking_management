@@ -16,6 +16,7 @@ struct Student {
     string vehicleType;
     string regDate;
     bool isActive;
+    string securityPhrase;
 };
 
 struct ParkingPass {
@@ -60,6 +61,7 @@ string validateContactNumber();
 string validateFaculty();
 string validateVehiclePlate();
 string validateVehicleType();
+string validateSecurityPhrase();
 int login(int& index);
 void saveParkingPasses();
 void loadParkingPasses();
@@ -150,6 +152,10 @@ void loadStudents()
         string activeStr;  // need this to convert string to bool
         getline(ss, activeStr, '|');
         s.isActive = (activeStr == "1");
+        // Try to read security answer
+		if (!getline(ss, s.securityPhrase, '|')) {
+		    s.securityPhrase = ""; // if no answer, default to null
+		}
         studentCount++;
     }
 }
@@ -190,6 +196,7 @@ void registerStudent() {
     s.vehicleNumber = validateVehiclePlate();
     s.vehicleType   = validateVehicleType();
     s.regDate       = getCurrentDate();
+    s.securityPhrase   = validateSecurityPhrase();
     s.isActive      = true;
 
     students[studentCount++] = s;
@@ -311,32 +318,130 @@ string validateVehicleType() {
     }
 }
 
+string validateSecurityPhrase() {
+    string ans;
+    cin.ignore();
+    while (true) {
+        cout << "Please enter a security phrase. This will be used to reset your password.\n";
+        getline(cin, ans);
+
+        // basic validation: at least 2 chars, letters/spaces only
+        bool valid = ans.length() >= 2;
+        for (int i = 0; i < (int)ans.length(); i++) {
+            if (!isalpha(ans[i]) && ans[i] != ' ') {
+                valid = false;
+                break;
+            }
+        }
+
+        if (valid) {
+            // normalize to lowercase for easier matching
+            for (int i = 0; i < (int)ans.length(); i++) {
+                ans[i] = tolower(ans[i]);
+            }
+            return ans;
+        }
+
+        cout << "Invalid answer. Use letters/spaces only.\n";
+    }
+}
+
+void forgotPassword() {
+    string id;
+    cout << "\n===== FORGOT PASSWORD =====\n";
+    cout << "Enter Student ID: ";
+    cin >> id;
+
+    int idx = findStudent(id);
+    if (idx == -1) {
+        cout << "Student ID not found.\n";
+        return;
+    }
+
+    string ans;
+    cin.ignore();
+    cout << "Please enter your security phrase.\n";
+    getline(cin, ans);
+
+    // normalize
+    for (int i = 0; i < (int)ans.length(); i++) ans[i] = tolower(ans[i]);
+
+    if (ans != students[idx].securityPhrase) {
+        cout << "Security phrase incorrect.\n";
+        return;
+    }
+
+    cout << "Identity verified.\n";
+    students[idx].password = validatePassword();
+    saveStudents();
+    cout << "Password reset successful. You may now login.\n";
+}
+
 int login(int& index) {
     string id, password;
 
     cout << "\n===== LOGIN =====\n";
-    cout << "Enter ID       : "; cin >> id;
-    cout << "Enter Password : "; cin >> password;
+    cout << "Enter ID       : ";
+    cin >> id;
 
-    // Check students array
-    for (int i = 0; i < studentCount; i++) {
-        if (students[i].studentID == id && students[i].password == password) {
-            index = i;
-            cout << "\nLogin successful! Welcome, " << students[i].name << ".\n";
-            return 1; // Student
+    // for students
+    int sIdx = findStudent(id);
+    if (sIdx != -1) {
+        while (true) {
+            cout << "Enter Password (or -1 to reset): ";
+            cin >> password;
+
+            if (password == "-1") {
+                string ans;
+                cin.ignore();
+                cout << "Enter your security phrase to reset your password. ";
+                getline(cin, ans);
+
+                // normalize input to lowercase
+                for (int i = 0; i < (int)ans.length(); i++) {
+                    ans[i] = tolower(ans[i]);
+                }
+
+                if (ans == students[sIdx].securityPhrase) {
+                    cout << "Identity verified.\n";
+                    students[sIdx].password = validatePassword();
+                    saveStudents();
+                    cout << "Password reset successful. Please login again.\n";
+                } else {
+                    cout << "Security answer incorrect. Reset cancelled.\n";
+                }
+                return 0; // back to main menu after reset attempt
+            }
+
+            if (students[sIdx].password == password) {
+                index = sIdx;
+                cout << "\nLogin successful! Welcome, " << students[sIdx].name << ".\n";
+                return 1; // Student
+            }
+
+            cout << "Incorrect password. Try again (or enter -1 to reset).\n";
         }
     }
 
-    // Check admins array
+    // for admins
     for (int i = 0; i < adminCount; i++) {
-        if (admins[i].adminID == id && admins[i].password == password) {
-            index = i;
-            cout << "\nLogin successful! Welcome, " << admins[i].name << ".\n";
-            return 2; // Admin
+        if (admins[i].adminID == id) {
+            while (true) {
+                cout << "Enter Password: ";
+                cin >> password;
+
+                if (admins[i].password == password) {
+                    index = i;
+                    cout << "\nLogin successful! Welcome, " << admins[i].name << ".\n";
+                    return 2; // Admin
+                }
+
+                cout << "Incorrect password. Try again.\n";
+            }
         }
     }
 
-    cout << "\nInvalid ID or password. Please try again.\n";
+    cout << "\nInvalid ID. Please try again.\n";
     return 0;
 }
 
@@ -892,7 +997,7 @@ int findStudent(string id) {
 void saveStudents() {
     ofstream file("students.txt");
     if (!file) {
-        cout << "ERROR: Could not open students.txt for writing!\n";
+        cout << "Error: Could not open students.txt for writing\n";
         return;
     }
     for (int i = 0; i < studentCount; i++) {
@@ -905,7 +1010,8 @@ void saveStudents() {
              << s.vehicleNumber << "|"
              << s.vehicleType << "|"
              << s.regDate << "|"
-             << (s.isActive ? "1" : "0") << "\n";
+             << (s.isActive ? "1" : "0") << "|"
+             << s.securityPhrase << "\n";
     }
     file.close();
 }
@@ -1066,7 +1172,6 @@ void viewCurrentAppStatus(Student &s) {
     cout << "Payment Status : " << p.paymentStatus << endl;
     cout << "Payment Date   : " << (p.paymentDate.empty() ? "N/A" : p.paymentDate) << endl;
 
-    // Next-step guidance
     cout << "\nNext Action: ";
     if (p.status == "Pending") {
         cout << "Please wait for admin approval.\n";
@@ -1100,7 +1205,7 @@ void checkExpirationAlert(Student &s) {
 
     ParkingPass &p = parkingPasses[activeIdx];
 
-    // Only alert near month end (e.g., 25th onward)
+    // Only alert near month end
     time_t nowT = time(0);
     tm *now = localtime(&nowT);
     int dayOfMonth = now->tm_mday;
@@ -1111,7 +1216,6 @@ void checkExpirationAlert(Student &s) {
     cout << " [REMINDER] Approaching month end.\n";
     cout << " Your active parking pass will end on: " << p.endDate << "\n";
 
-    // Optional: if there is already a pending renewal, tell them
     bool hasPending = false;
     for (int i = 0; i < passCount; i++) {
         if (parkingPasses[i].studentID == s.studentID &&
