@@ -37,10 +37,11 @@ struct Admin {
     string name;
     string password;
     string contactNumber;
+    string securityPhrase;
 };
 
 #define NO_OF_STUDENTS 500
-#define NO_OF_ADMINS 10
+#define NO_OF_ADMINS 50
 #define MONTHLY_RATE 30.00
 
 Student students[NO_OF_STUDENTS];
@@ -54,6 +55,7 @@ int adminCount = 0;
 void loadStudents();
 void loadAdmins();
 void registerStudent();
+void registerAdmin();
 string validateStudentID();
 string validatePassword();
 string validateName();
@@ -62,6 +64,11 @@ string validateFaculty();
 string validateVehiclePlate();
 string validateVehicleType();
 string validateSecurityPhrase();
+string validateAdminID();
+void resetPasswordStudent(int sIdx);
+void resetPasswordAdmin(int aIdx);
+int findAdmin(string id);
+void resetPassword(const string &id);
 int login(int& index);
 void saveParkingPasses();
 void loadParkingPasses();
@@ -82,6 +89,7 @@ void approveRejectPass();
 void viewCurrentAppStatus(Student &s);
 int findStudent(string id);
 void saveStudents();
+void saveAdmins();
 void checkExpirationAlert(Student &s);
 void generateAnalytics();
 void studentMenu(Student &s);
@@ -98,7 +106,8 @@ int main()
         cout << "\n=== MPKJ Monthly Car Parking Pass System ===\n";
         cout << "1. Login\n";
         cout << "2. Register New Student\n";
-        cout << "3. Exit System\n";
+        cout << "3. Register New Admin\n";
+        cout << "4. Exit System\n";
         cout << "Enter your choice: ";
 
         if (!(cin >> mainChoice)) {
@@ -122,12 +131,15 @@ int main()
                 registerStudent();
                 break;
             case 3:
+            	registerAdmin();
+            	break;
+            case 4:
                 cout << "Exiting system. Goodbye!\n";
                 break;
             default:
                 cout << "Invalid input. Please enter 1, 2, or 3.\n";
         }
-    } while (mainChoice != 3);
+    } while (mainChoice != 4);
     
     return 0;
 }
@@ -173,6 +185,9 @@ void loadAdmins()
         getline(ss, a.name, '|');
         getline(ss, a.password, '|');
         getline(ss, a.contactNumber, '|');
+        if (!getline(ss, a.securityPhrase, '|')) {
+            a.securityPhrase = "";
+        }
         adminCount++;
     }
 }
@@ -205,6 +220,41 @@ void registerStudent() {
     cout << "\nRegistration successful! You may now login.\n";
 }
 
+void registerAdmin() {
+    cout << "\n===== NEW ADMIN REGISTRATION =====\n";
+
+    if (adminCount >= NO_OF_ADMINS) {
+        cout << "Admin limit reached. Cannot register more admins.\n";
+        return;
+    }
+
+    Admin a;
+
+    a.adminID = validateAdminID();
+
+    if (findAdmin(a.adminID) != -1) {
+        cout << "This Admin ID is already registered.\n";
+        return;
+    }
+
+    a.password = validatePassword();
+    a.name = validateName();
+    a.contactNumber = validateContactNumber();
+    a.securityPhrase = validateSecurityPhrase();
+
+    admins[adminCount++] = a;
+    saveAdmins();
+
+    cout << "\nAdmin registration successful!\n";
+}
+
+int findAdmin(string id) {
+    for (int i = 0; i < adminCount; i++) {
+        if (admins[i].adminID == id) return i;
+    }
+    return -1;
+}
+
 string validateStudentID() {
     string id;
     while (true) {
@@ -218,6 +268,27 @@ string validateStudentID() {
             if (allDigits) return id;
         }
         cout << "Invalid Student ID. Please enter again.\n";
+    }
+}
+
+string validateAdminID() {
+    string id;
+    while (true) {
+        cout << "Enter Admin ID (starts with 1, total 7 digits): ";
+        cin >> id;
+
+        if (id.length() == 7 && id[0] == '1') {
+            bool allDigits = true;
+            for (int i = 0; i < 7; i++) {
+                if (!isdigit(id[i])) {
+                    allDigits = false;
+                    break;
+                }
+            }
+            if (allDigits) return id;
+        }
+
+        cout << "Invalid Admin ID. Please enter again.\n";
     }
 }
 
@@ -346,102 +417,113 @@ string validateSecurityPhrase() {
     }
 }
 
-void forgotPassword() {
-    string id;
-    cout << "\n===== FORGOT PASSWORD =====\n";
-    cout << "Enter Student ID: ";
-    cin >> id;
-
-    int idx = findStudent(id);
-    if (idx == -1) {
-        cout << "Student ID not found.\n";
+void resetPassword(const string &id) {
+    if (id.empty()) {
+        cout << "Invalid ID.\n";
         return;
     }
 
     string ans;
     cin.ignore();
-    cout << "Please enter your security phrase.\n";
+    cout << "Please enter security phrase to reset password. ";
     getline(cin, ans);
-
-    // normalize
     for (int i = 0; i < (int)ans.length(); i++) ans[i] = tolower(ans[i]);
 
-    if (ans != students[idx].securityPhrase) {
-        cout << "Security phrase incorrect.\n";
+    // Student reset
+    if (id[0] == '2') {
+        int sIdx = findStudent(id);
+        if (sIdx == -1) {
+            cout << "Student ID not found.\n";
+            return;
+        }
+
+        if (students[sIdx].securityPhrase.empty()) {
+            cout << "No security phrase set for this student account.\n";
+            return;
+        }
+
+        if (ans != students[sIdx].securityPhrase) {
+            cout << "Security phrase incorrect. Reset cancelled.\n";
+            return;
+        }
+
+        cout << "Identity verified.\n";
+        students[sIdx].password = validatePassword();
+        saveStudents();
+        cout << "Password reset successful. Please login again.\n";
         return;
     }
 
-    cout << "Identity verified.\n";
-    students[idx].password = validatePassword();
-    saveStudents();
-    cout << "Password reset successful. You may now login.\n";
+    // Admin reset
+    if (id[0] == '1') {
+        int aIdx = -1;
+        for (int i = 0; i < adminCount; i++) {
+            if (admins[i].adminID == id) {
+                aIdx = i;
+                break;
+            }
+        }
+
+        if (aIdx == -1) {
+            cout << "Admin ID not found.\n";
+            return;
+        }
+
+        if (admins[aIdx].securityPhrase.empty()) {
+            cout << "No security phrase set for this admin account.\n";
+            return;
+        }
+
+        if (ans != admins[aIdx].securityPhrase) {
+            cout << "Security phrase incorrect. Reset cancelled.\n";
+            return;
+        }
+
+        cout << "Identity verified.\n";
+        admins[aIdx].password = validatePassword();
+        saveAdmins(); // make sure this exists
+        cout << "Password reset successful. Please login again.\n";
+        return;
+    }
+
+    cout << "Unknown ID type. Reset cancelled.\n";
 }
 
 int login(int& index) {
     string id, password;
 
     cout << "\n===== LOGIN =====\n";
-    cout << "Enter ID       : ";
+    cout << "Enter ID       : "; 
     cin >> id;
 
-    // for students
-    int sIdx = findStudent(id);
-    if (sIdx != -1) {
-        while (true) {
-            cout << "Enter Password (or -1 to reset): ";
-            cin >> password;
+    cout << "Enter Password (enter -1 to reset): "; 
+    cin >> password;
 
-            if (password == "-1") {
-                string ans;
-                cin.ignore();
-                cout << "Enter your security phrase to reset your password. ";
-                getline(cin, ans);
+    // Trigger reset flow
+    if (password == "-1") {
+        resetPassword(id);
+        return 0;
+    }
 
-                // normalize input to lowercase
-                for (int i = 0; i < (int)ans.length(); i++) {
-                    ans[i] = tolower(ans[i]);
-                }
-
-                if (ans == students[sIdx].securityPhrase) {
-                    cout << "Identity verified.\n";
-                    students[sIdx].password = validatePassword();
-                    saveStudents();
-                    cout << "Password reset successful. Please login again.\n";
-                } else {
-                    cout << "Security answer incorrect. Reset cancelled.\n";
-                }
-                return 0; // back to main menu after reset attempt
-            }
-
-            if (students[sIdx].password == password) {
-                index = sIdx;
-                cout << "\nLogin successful! Welcome, " << students[sIdx].name << ".\n";
-                return 1; // Student
-            }
-
-            cout << "Incorrect password. Try again (or enter -1 to reset).\n";
+    // Student login
+    for (int i = 0; i < studentCount; i++) {
+        if (students[i].studentID == id && students[i].password == password) {
+            index = i;
+            cout << "\nLogin successful! Welcome, " << students[i].name << ".\n";
+            return 2;
         }
     }
 
-    // for admins
+    // Admin login
     for (int i = 0; i < adminCount; i++) {
-        if (admins[i].adminID == id) {
-            while (true) {
-                cout << "Enter Password: ";
-                cin >> password;
-
-                if (admins[i].password == password) {
-                    index = i;
-                    cout << "\nLogin successful! Welcome, " << admins[i].name << ".\n";
-                    return 2; // Admin
-                }
-
-                cout << "Incorrect password. Try again.\n";
-            }
+        if (admins[i].adminID == id && admins[i].password == password) {
+            index = i;
+            cout << "\nLogin successful! Welcome, " << admins[i].name << ".\n";
+            return 1;
         }
     }
 
-    cout << "\nInvalid ID. Please try again.\n";
+    cout << "\nInvalid ID or password. Please try again.\n";
     return 0;
 }
 
@@ -1012,6 +1094,23 @@ void saveStudents() {
              << s.regDate << "|"
              << (s.isActive ? "1" : "0") << "|"
              << s.securityPhrase << "\n";
+    }
+    file.close();
+}
+
+void saveAdmins() {
+    ofstream file("admins.txt");
+    if (!file) {
+        cout << "Error: Could not open admins.txt for writing\n";
+        return;
+    }
+    for (int i = 0; i < adminCount; i++) {
+        Admin &a = admins[i];
+        file << a.adminID << "|"
+             << a.name << "|"
+             << a.password << "|"
+             << a.contactNumber << "|"
+             << a.securityPhrase << "\n";
     }
     file.close();
 }
