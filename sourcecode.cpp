@@ -693,6 +693,45 @@ void viewUpdateAdminProfile(Admin &a) {
     } while (choice != 3);
 }
 
+void cancelPendingApplication(Student &s) {
+    int targetIdx = -1;
+    string latestApplied = "";
+
+    // find latest pending application for this student
+    for (int i = 0; i < passCount; i++) {
+        if (parkingPasses[i].studentID == s.studentID &&
+            parkingPasses[i].status == "Pending") {
+            if (targetIdx == -1 || parkingPasses[i].appliedDate > latestApplied) {
+                targetIdx = i;
+                latestApplied = parkingPasses[i].appliedDate;
+            }
+        }
+    }
+
+    if (targetIdx == -1) {
+        cout << "No pending application/renewal found to cancel.\n";
+        return;
+    }
+
+    ParkingPass &p = parkingPasses[targetIdx];
+    cout << "\nPending Pass Found:\n";
+    cout << "Pass ID      : " << p.passID << endl;
+    cout << "Applied Date : " << p.appliedDate << endl;
+    cout << "Amount       : RM " << fixed << setprecision(2) << p.amount << endl;
+
+    char confirm;
+    cout << "Are you sure you want to cancel this pending application? (Y/N): ";
+    cin >> confirm;
+
+    if (confirm == 'Y' || confirm == 'y') {
+        p.status = "Cancelled";
+        saveParkingPasses();
+        cout << "Pending application cancelled successfully.\n";
+    } else {
+        cout << "Cancellation aborted.\n";
+    }
+}
+
 void makePayment(Student &s) {
     int targetIndex = -1;
 
@@ -1327,7 +1366,16 @@ void viewCurrentAppStatus(Student &s) {
 
     cout << "\nNext Action: ";
     if (p.status == "Pending") {
+    	char cancelChoice;
         cout << "Please wait for admin approval.\n";
+        cout << "You may cancel a pending application at any time. To cancel, input 'Y', otherwise press any key to return.\n";
+        cin >> cancelChoice;
+        cin.ignore(1000, '\n'); // discard everything else until newline
+        if (cancelChoice == 'Y' || cancelChoice == 'y') {
+            p.status = "Cancelled";
+            saveParkingPasses();
+            cout << "Your pending application has been cancelled.\n";
+        }
     } else if (p.status == "Rejected") {
         cout << "Your application was rejected. Please submit a new application.\n";
     } else if (p.status == "Active" && p.paymentStatus == "Unpaid") {
@@ -1335,7 +1383,7 @@ void viewCurrentAppStatus(Student &s) {
     } else if (p.status == "Active" && p.paymentStatus == "Paid") {
         cout << "No action needed. Your pass is active and paid.\n";
     } else {
-        cout << "Please check with admin for further details.\n";
+        cout << "Please apply for a new pass.\n";
     }
 }
 
