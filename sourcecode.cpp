@@ -73,6 +73,7 @@ int login(int& index);
 void saveParkingPasses();
 void loadParkingPasses();
 void viewUpdateProfile(Student &s);
+void viewUpdateAdminProf(Admin &a);
 void makePayment(Student &s);
 string getCurrentDate(); 
 void applyParkingPass(Student &s);
@@ -120,9 +121,9 @@ int main()
             case 1: {
                 int index = -1;
                 int userType = login(index);
-                if (userType == 1) {
+                if (userType == 2) {
                     studentMenu(students[index]);
-                } else if (userType == 2) {
+                } else if (userType == 1) {
                     adminMenu(admins[index]);
                 }
                 break;
@@ -639,6 +640,57 @@ void viewUpdateProfile(Student &s) {
         }
 
     } while (choice != 6);
+}
+
+void viewUpdateAdminProfile(Admin &a) {
+    int choice = 0;
+    do {
+        cout << "\n=== ADMIN PROFILE ===\n";
+        cout << "Admin ID       : " << a.adminID << endl;
+        cout << "Full Name      : " << a.name << endl;
+        cout << "Contact Number : " << a.contactNumber << endl;
+
+        cout << "\n--- What would you like to update? ---\n";
+        cout << "1. Contact Number\n";
+        cout << "2. Password\n";
+        cout << "3. Back to Admin Menu\n";
+        cout << "Enter your choice: ";
+
+        if (!(cin >> choice)) {
+            cin.clear();
+            cin.ignore(1000, '\n');
+            choice = 0;
+        }
+
+        switch (choice) {
+            case 1:
+                a.contactNumber = validateContactNumber();
+                cout << "Contact number updated successfully.\n";
+                saveAdmins();
+                break;
+            case 2: {
+                string oldPassword;
+                cout << "Enter current password: ";
+                cin >> oldPassword;
+
+                if (oldPassword != a.password) {
+                    cout << "Incorrect current password. Update cancelled.\n";
+                    break;
+                }
+
+                a.password = validatePassword();
+                cout << "Password updated successfully.\n";
+                saveAdmins();
+                break;
+            }
+            case 3:
+                cout << "Returning to admin menu...\n";
+                break;
+            default:
+                cout << "Invalid input. Please enter 1 to 3.\n";
+        }
+
+    } while (choice != 3);
 }
 
 void makePayment(Student &s) {
@@ -1218,7 +1270,8 @@ void adminMenu(Admin &a) {
         cout << "1. View Pending Applications\n";
         cout << "2. Approve / Reject Pass\n";
         cout << "3. Generate Analytics & Summary Report\n";
-        cout << "4. Logout\n";
+        cout << "4. View / Update My Profile\n";
+        cout << "5. Logout\n";
         cout << "Enter your choice: ";
         
         if (!(cin >> choice)) {
@@ -1231,10 +1284,11 @@ void adminMenu(Admin &a) {
             case 1: viewPendingApplications(); break;
             case 2: approveRejectPass(); break;
             case 3: generateAnalytics(); break;
-            case 4: cout << "Logging out...\n"; break;
-            default: cout << "Invalid input. Please enter 1 to 4.\n";
+            case 4: viewUpdateAdminProfile(a); break;
+    		case 5: cout << "Logging out...\n"; break;
+            default: cout << "Invalid input. Please enter 1 to 5.\n";
         }
-    } while(choice != 4);
+    } while(choice != 5);
 }
 
 void viewCurrentAppStatus(Student &s) {
