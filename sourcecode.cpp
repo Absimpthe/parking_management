@@ -65,8 +65,6 @@ string validateVehiclePlate();
 string validateVehicleType();
 string validateSecurityPhrase();
 string validateAdminID();
-void resetPasswordStudent(int sIdx);
-void resetPasswordAdmin(int aIdx);
 int findAdmin(string id);
 void resetPassword(const string &id);
 int login(int& index);
@@ -642,7 +640,7 @@ void viewUpdateProfile(Student &s) {
     } while (choice != 6);
 }
 
-void viewUpdateAdminProfile(Admin &a) {
+void viewUpdateAdminProf(Admin &a) {
     int choice = 0;
     do {
         cout << "\n=== ADMIN PROFILE ===\n";
@@ -691,45 +689,6 @@ void viewUpdateAdminProfile(Admin &a) {
         }
 
     } while (choice != 3);
-}
-
-void cancelPendingApplication(Student &s) {
-    int targetIdx = -1;
-    string latestApplied = "";
-
-    // find latest pending application for this student
-    for (int i = 0; i < passCount; i++) {
-        if (parkingPasses[i].studentID == s.studentID &&
-            parkingPasses[i].status == "Pending") {
-            if (targetIdx == -1 || parkingPasses[i].appliedDate > latestApplied) {
-                targetIdx = i;
-                latestApplied = parkingPasses[i].appliedDate;
-            }
-        }
-    }
-
-    if (targetIdx == -1) {
-        cout << "No pending application/renewal found to cancel.\n";
-        return;
-    }
-
-    ParkingPass &p = parkingPasses[targetIdx];
-    cout << "\nPending Pass Found:\n";
-    cout << "Pass ID      : " << p.passID << endl;
-    cout << "Applied Date : " << p.appliedDate << endl;
-    cout << "Amount       : RM " << fixed << setprecision(2) << p.amount << endl;
-
-    char confirm;
-    cout << "Are you sure you want to cancel this pending application? (Y/N): ";
-    cin >> confirm;
-
-    if (confirm == 'Y' || confirm == 'y') {
-        p.status = "Cancelled";
-        saveParkingPasses();
-        cout << "Pending application cancelled successfully.\n";
-    } else {
-        cout << "Cancellation aborted.\n";
-    }
 }
 
 void makePayment(Student &s) {
@@ -1308,7 +1267,7 @@ void adminMenu(Admin &a) {
         cout << "\n=== ADMIN MENU ===\n";
         cout << "1. View Pending Applications\n";
         cout << "2. Approve / Reject Pass\n";
-        cout << "3. Generate Analytics & Summary Report\n";
+        cout << "3. Generate Analytics\n";
         cout << "4. View / Update My Profile\n";
         cout << "5. Logout\n";
         cout << "Enter your choice: ";
@@ -1323,7 +1282,7 @@ void adminMenu(Admin &a) {
             case 1: viewPendingApplications(); break;
             case 2: approveRejectPass(); break;
             case 3: generateAnalytics(); break;
-            case 4: viewUpdateAdminProfile(a); break;
+            case 4: viewUpdateAdminProf(a); break;
     		case 5: cout << "Logging out...\n"; break;
             default: cout << "Invalid input. Please enter 1 to 5.\n";
         }
