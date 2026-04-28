@@ -136,7 +136,7 @@ int main()
                 cout << "Exiting system. Goodbye!\n";
                 break;
             default:
-                cout << "Invalid input. Please enter 1, 2, or 3.\n";
+                cout << "Invalid input. Please enter 1 to 4.\n";
         }
     } while (mainChoice != 4);
     
